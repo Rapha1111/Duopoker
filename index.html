@@ -215,7 +215,7 @@ button{font-family:inherit; cursor:pointer;}
 .strength-fill{height:100%; border-radius:6px;}
 
 /* ---------- Daily / Simulator ---------- */
-#screen-daily, #screen-sim{max-width:640px; margin:0 auto; padding:20px 20px 110px;}
+#screen-practice, #screen-courses{max-width:640px; margin:0 auto; padding:20px 20px 110px;}
 .card-title-row{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
 .card-title-row h2{margin:0; font-size:22px;}
 .table-felt{background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-dark) 100%); border-radius:24px; padding:26px 16px; color:#fff; text-align:center; margin-bottom:18px;}
@@ -297,37 +297,34 @@ h1,h2,h3{margin:0;}
 
 <!-- ================= PROFILE ================= -->
 <div id="screen-profile" class="screen hidden">
-  <div class="page-header"><h1>Profil</h1></div>
+  <div class="page-header"><h1>Profil</h1><button class="btn-sm btn-outline" style="border-radius:12px;" onclick="App.go('settings')">⚙️ Réglages</button></div>
   <div id="profile-content" style="padding:0 20px;"></div>
 </div>
 
-<!-- ================= DAILY HAND ================= -->
-<div id="screen-daily" class="screen hidden">
-  <div class="page-header"><h1>Main du jour</h1></div>
-  <div id="daily-content" style="padding:0 20px;"></div>
+<!-- ================= PRATIQUER (coach) ================= -->
+<div id="screen-practice" class="screen hidden">
+  <div class="page-header"><h1>Pratiquer</h1></div>
+  <div id="practice-content" style="padding:0 20px;"></div>
 </div>
 
-<!-- ================= SIMULATOR ================= -->
-<div id="screen-sim" class="screen hidden">
-  <div class="page-header"><h1>Table d'entraînement</h1></div>
-  <div id="sim-content" style="padding:0 20px;"></div>
+<!-- ================= COURS (relecture) ================= -->
+<div id="screen-courses" class="screen hidden">
+  <div class="page-header"><h1>Mes cours</h1></div>
+  <div id="courses-content" style="padding:0 20px;"></div>
 </div>
-
-<!-- ================= QUICK TRAINING (uses lesson engine) ================= -->
 
 <!-- ================= SETTINGS ================= -->
 <div id="screen-settings" class="screen hidden">
-  <div class="page-header"><h1>Réglages</h1></div>
+  <div class="page-header"><button class="close-x" onclick="App.go('profile')">←</button><h1>Réglages</h1><span></span></div>
   <div id="settings-content" style="padding:0 20px;"></div>
 </div>
 
 <!-- ================= BOTTOM NAV ================= -->
 <div class="bottomnav hidden" id="bottomnav">
   <button class="nav-item" data-tab="path" onclick="App.go('path')"><span class="ic">🗺️</span>Parcours</button>
-  <button class="nav-item" data-tab="daily" onclick="App.go('daily')"><span class="ic">📅</span>Main du jour</button>
-  <button class="nav-item" data-tab="sim" onclick="App.go('sim')"><span class="ic">🎰</span>Simulateur</button>
+  <button class="nav-item" data-tab="practice" onclick="App.go('practice')"><span class="ic">🎯</span>Pratiquer</button>
+  <button class="nav-item" data-tab="courses" onclick="App.go('courses')"><span class="ic">📖</span>Cours</button>
   <button class="nav-item" data-tab="profile" onclick="App.go('profile')"><span class="ic">👤</span>Profil</button>
-  <button class="nav-item" data-tab="settings" onclick="App.go('settings')"><span class="ic">⚙️</span>Réglages</button>
 </div>
 
 <div id="modal-root"></div>
@@ -591,8 +588,8 @@ function defaultSave(){
     progress:{}, // lessonId -> {stars, bestAccuracy, timesCompleted}
     skillPractice:{}, // unitId -> lastPracticedTimestamp
     badges:[],
-    dailyDone:{}, // date -> true
     spinStats:{played:0, won:0, bestFinish:null},
+    coachStats:{decisions:0, good:0, bad:0},
     settings:{sound:true},
     createdAt:Date.now()
   };
@@ -1185,8 +1182,8 @@ const App=(function(){
     Save.persist();
     if(screen==='path') Path.render();
     if(screen==='profile') Profile.render();
-    if(screen==='daily') Daily.render();
-    if(screen==='sim') Sim.render();
+    if(screen==='practice') Practice.render();
+    if(screen==='courses') Courses.render();
     if(screen==='settings') Settings.render();
     window.scrollTo(0,0);
   }
@@ -1279,12 +1276,20 @@ const Path=(function(){
    LESSON ENGINE
    ========================================================================= */
 const Lesson=(function(){
-  let queue=[], idx=0, correctCount=0, currentLesson=null, answered=false, selectedIdx=null, xpEarned=0;
+  let queue=[], idx=0, correctCount=0, currentLesson=null, answered=false, selectedIdx=null, xpEarned=0, reviewMode=false;
   function start(lesson){
     currentLesson=lesson;
     queue=[...(lesson.slides||[]), ...lesson.gen()];
-    idx=0; correctCount=0; xpEarned=0;
+    idx=0; correctCount=0; xpEarned=0; reviewMode=false;
     App.go('lesson');
+    renderExercise();
+  }
+  function review(lesson){
+    currentLesson=lesson;
+    queue=lesson.slides||[];
+    idx=0; correctCount=0; xpEarned=0; reviewMode=true;
+    App.go('lesson');
+    if(queue.length===0){ App.go('courses'); return; }
     renderExercise();
   }
   function cleanupFloatingEls(){
@@ -1292,11 +1297,11 @@ const Lesson=(function(){
     const fb=document.getElementById('feedback-el'); if(fb) fb.remove();
   }
   function quit(){
-    if(idx>0 && idx<queue.length){
+    if(!reviewMode && idx>0 && idx<queue.length){
       if(!confirm("Quitter la leçon ? Ta progression sur cette session sera perdue.")) return;
     }
     cleanupFloatingEls();
-    App.go('path');
+    App.go(reviewMode?'courses':'path');
   }
   function updateHud(){
     document.getElementById('lesson-progress').style.width=Math.round((idx/queue.length)*100)+'%';
@@ -1375,8 +1380,13 @@ const Lesson=(function(){
     footer.innerHTML=`<div class="check-footer-inner"><button class="btn btn-blue btn-block" id="btn-slide-next">J'ai compris, continuer</button></div>`;
     document.body.appendChild(footer);
     document.getElementById('btn-slide-next').onclick=()=>{
-      xpEarned+=5; Save.data.xp+=5; Save.persist();
       footer.remove();
+      if(reviewMode){
+        idx++;
+        if(idx>=queue.length) App.go('courses'); else renderExercise();
+        return;
+      }
+      xpEarned+=5; Save.data.xp+=5; Save.persist();
       idx++;
       if(idx>=queue.length) finishLesson(); else renderExercise();
     };
@@ -1472,7 +1482,7 @@ const Lesson=(function(){
       <button class="btn btn-green btn-block" onclick="App.go('path')">Continuer</button>
     `;
   }
-  return {start, quit};
+  return {start, quit, review};
 })();
 
 /* =========================================================================
@@ -1524,98 +1534,11 @@ const Profile=(function(){
   return {render};
 })();
 
-/* =========================================================================
-   DAILY HAND
-   ========================================================================= */
-function seededRandomFactory(seedStr){
-  let h=0;
-  for(let i=0;i<seedStr.length;i++){ h=Math.imul(31,h)+seedStr.charCodeAt(i)|0; }
-  let state=h||1;
-  return function(){
-    state^=state<<13; state^=state>>>17; state^=state<<5;
-    return ((state>>>0)/4294967295);
-  };
-}
-const Daily=(function(){
-  function buildScenario(seed){
-    const rnd=seededRandomFactory(seed);
-    function srand(n){ return Math.floor(rnd()*n); }
-    const suits=SUITS;
-    function sPick(arr){ return arr[srand(arr.length)]; }
-    // deal deterministic cards
-    let deck=makeDeck();
-    // simple deterministic shuffle using rnd
-    for(let i=deck.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [deck[i],deck[j]]=[deck[j],deck[i]]; }
-    const hole=[deck[0],deck[1]];
-    const board=[deck[2],deck[3],deck[4]];
-    const levelIdx=srand(6);
-    const blinds=BLIND_LEVELS[levelIdx];
-    const pot=blinds.bb*5;
-    const bet=[Math.round(pot*0.5),Math.round(pot*0.75),pot][srand(3)];
-    const heroEval=evaluateBest([...hole,...board]);
-    const requiredEquity=bet/(pot+2*bet);
-    let strengthScore = heroEval.rank/8;
-    // check draws bonus
-    const suitsCount={}; [...hole,...board].forEach(c=>suitsCount[c.s]=(suitsCount[c.s]||0)+1);
-    const hasFlushDraw=Object.values(suitsCount).some(v=>v===4);
-    if(hasFlushDraw) strengthScore=Math.max(strengthScore, 0.55);
-    let correctAction;
-    if(heroEval.rank>=2) correctAction='raise'; // two pair or better -> value raise
-    else if(strengthScore >= requiredEquity+0.05 || hasFlushDraw) correctAction='call';
-    else correctAction='fold';
-    return {hole,board,pot,bet,blinds,heroEval,requiredEquity,correctAction};
-  }
-  function render(){
-    const s=Save.data;
-    const date=todayStr();
-    const done=s.dailyDone[date];
-    const scenario=buildScenario(date);
-    const c=document.getElementById('daily-content');
-    const actionLabels={fold:'Se coucher (Fold)',call:'Suivre (Call)',raise:'Relancer (Raise)'};
-    c.innerHTML=`
-      <div class="mascot-row"><div class="mascot-emoji">🦈</div><div class="speech-bubble">${done?"Bravo, tu as déjà résolu la main du jour ! Reviens demain pour une nouvelle main.":"Spin & Go 3-way, palier "+scenario.blinds.sb+"/"+scenario.blinds.bb+". Un adversaire mise, l'autre s'est couché. Analyse la situation et choisis la meilleure action !"}</div></div>
-      <div class="table-felt">
-        <div class="pot-display">Palier ${scenario.blinds.sb}/${scenario.blinds.bb} — Pot : ${scenario.pot} — Mise adverse : ${scenario.bet}</div>
-        <div class="board-label" style="color:#fff;opacity:.8;">Board</div>
-        <div id="daily-board"></div>
-        <div class="hero-label">Vos cartes</div>
-        <div id="daily-hole"></div>
-      </div>
-      <div class="choices" id="daily-choices"></div>
-      <div id="daily-result"></div>
-    `;
-    document.getElementById('daily-board').appendChild(cardsRow(scenario.board));
-    document.getElementById('daily-hole').appendChild(cardsRow(scenario.hole));
-    const choicesEl=document.getElementById('daily-choices');
-    if(done){
-      const resultEl=document.getElementById('daily-result');
-      resultEl.innerHTML=`<div class="scenario-box">La bonne réponse était : <b>${actionLabels[scenario.correctAction]}</b>. Ta main : ${scenario.heroEval.name}.</div>`;
-      return;
-    }
-    ['fold','call','raise'].forEach(a=>{
-      const b=document.createElement('button');
-      b.className='choice-btn'; b.textContent=actionLabels[a];
-      b.onclick=()=>{
-        const correct=a===scenario.correctAction;
-        document.querySelectorAll('#daily-choices .choice-btn').forEach(x=>x.disabled=true);
-        b.classList.add(correct?'correct':'wrong');
-        if(correct){ Sound.correct(); Save.data.xp+=25; } else { Sound.wrong(); }
-        s.dailyDone[date]=true;
-        updateStreak();
-        checkBadges();
-        Save.persist();
-        document.getElementById('daily-result').innerHTML=`<div class="scenario-box">${correct?'✅ Bien joué !':"❌ Ce n'était pas optimal."} La bonne réponse était : <b>${actionLabels[scenario.correctAction]}</b>. Ta main : ${scenario.heroEval.name}. ${correct?'+25 XP':''}</div>`;
-      };
-      choicesEl.appendChild(b);
-    });
-  }
-  return {render};
-})();
 
 /* =========================================================================
-   SIMULATOR — Spin & Go 3-way trainer (with blind escalation & side pots)
+   PRATIQUER — Spin & Go 3-way coach (blind escalation, side pots, coaching)
    ========================================================================= */
-const Sim=(function(){
+const Practice=(function(){
   const HANDS_PER_LEVEL=3;
   let session=null, hand=null;
 
@@ -1802,7 +1725,7 @@ const Sim=(function(){
     const maxBet=Math.max(...activeIds.map(x=>hand.bet[x]));
     const toCall=maxBet-hand.bet[id];
     let strength = hand.board.length===0
-      ? Math.min(1, chenScore(hand.holes[id])/20)
+      ? Math.max(0, Math.min(1, chenScore(hand.holes[id])/20))
       : computeEquityMC(hand.holes[id], hand.board, activeOpponents, 80);
     if(style==='fish') strength=Math.min(1, strength+0.08);
     const pot=Object.values(hand.totalContrib).reduce((a,b)=>a+b,0);
@@ -1822,32 +1745,101 @@ const Sim=(function(){
     }
   }
 
+  function evaluateCoach(action){
+    const activeIds=hand.ids.filter(x=>!hand.folded[x]);
+    const activeOpponents=activeIds.filter(x=>x!=='hero').length;
+    const maxBet=Math.max(...activeIds.map(x=>hand.bet[x]));
+    const toCall=maxBet-hand.bet['hero'];
+    const pot=Object.values(hand.totalContrib).reduce((a,b)=>a+b,0);
+    const isPreflop=hand.board.length===0;
+    const strength = isPreflop
+      ? Math.max(0, Math.min(1, chenScore(hand.holes['hero'])/20))
+      : computeEquityMC(hand.holes['hero'], hand.board, activeOpponents, 150);
+    const pct=Math.round(strength*100);
+    const label = isPreflop ? `Un score de force (Chen) de ${pct}/100` : `Une équité estimée à ${pct}%`;
+    const type = action==='fold'?'fold':action==='check'?'check':action==='call'?'call':'bet';
+
+    if(toCall>0){
+      const reqEq=toCall/(pot+toCall);
+      const reqPct=Math.round(reqEq*100);
+      if(type==='fold'){
+        return strength>=reqEq+0.05
+          ? {ok:false, title:'Fold trop prudent', msg:`${label} contre un seuil requis de ${reqPct}% pour suivre : continuer était plus rentable qu'un fold ici.`}
+          : {ok:true, title:'Bon fold', msg:`${label}, en dessous du seuil requis (${reqPct}%) : se coucher était la décision correcte.`};
+      }
+      if(type==='call'){
+        return strength>=reqEq
+          ? {ok:true, title:'Bon call', msg:`${label} dépasse le seuil requis (${reqPct}%) : suivre est rentable.`}
+          : {ok:false, title:'Call discutable', msg:`${label}, inférieure au seuil requis (${reqPct}%). Ce call n'est rentable que si tu as une bonne raison d'exploiter ton adversaire (bluffs fréquents, cotes implicites).`};
+      }
+      if(strength>=0.65) return {ok:true, title:'Bonne relance', msg:`${label} : relancer pour la value est cohérent.`};
+      if(strength<0.3) return {ok:null, title:'Relance-bluff', msg:`${label} : c'est une relance-bluff pure. Vérifie que ton adversaire est capable de se coucher — évite ça contre un joueur qui paie tout.`};
+      return {ok:null, title:'Relance moyenne', msg:`${label} : cette relance est entre deux eaux, ni value franche ni bluff pur. Un simple call est souvent plus simple à jouer.`};
+    } else {
+      if(type==='check'){
+        return strength>=0.68
+          ? {ok:false, title:'Check trop passif', msg:`${label} : miser pour value aurait probablement rapporté plus de jetons.`}
+          : {ok:true, title:'Bon check', msg:`${label} : checker est raisonnable ici, pas assez de force pour value bet, pas besoin de bluffer.`};
+      }
+      if(strength>=0.6) return {ok:true, title:'Bonne value bet', msg:`${label} : cette mise pour value est justifiée.`};
+      if(strength<0.3) return {ok:null, title:'Bluff', msg:`${label} : c'est un bluff. Vérifie que ton adversaire est capable de se coucher avant de répéter ce type de mise.`};
+      return {ok:null, title:'Mise moyenne', msg:`${label} : cette mise correspond à une value fine ou un semi-bluff — reste cohérent avec le profil de ton adversaire (unité 4).`};
+    }
+  }
+  function showCoachModal(verdict){
+    const icon = verdict.ok===true?'✅':(verdict.ok===false?'⚠️':'🤔');
+    const overlay=document.createElement('div');
+    overlay.className='modal-overlay';
+    overlay.innerHTML=`
+      <div class="modal-box">
+        <div style="font-size:44px;">${icon}</div>
+        <h3>${verdict.title}</h3>
+        <p>${verdict.msg}</p>
+        <div class="modal-actions">
+          <button class="btn btn-blue btn-block" id="coach-continue">Continuer</button>
+        </div>
+      </div>`;
+    document.getElementById('modal-root').appendChild(overlay);
+    document.getElementById('coach-continue').onclick=()=>{ overlay.remove(); render(); };
+  }
+
   function heroAction(action){
     if(!hand || hand.done || hand.actOrder[hand.actPos]!=='hero') return;
     const activeIds=hand.ids.filter(x=>!hand.folded[x]);
     const maxBet=Math.max(...activeIds.map(x=>hand.bet[x]));
     const toCall=maxBet-hand.bet['hero'];
+    if(action==='check' && toCall>0) return;
     const pot=Object.values(hand.totalContrib).reduce((a,b)=>a+b,0);
     const heroStack=session.players.find(p=>p.id==='hero').stack;
+    const verdict=evaluateCoach(action);
+    const cs=Save.data.coachStats;
+    cs.decisions++;
+    if(verdict.ok===true) cs.good++;
+    else if(verdict.ok===false) cs.bad++;
+    Save.persist();
     if(action==='fold') act('hero','fold');
-    else if(action==='check'){ if(toCall>0) return; act('hero','check'); }
+    else if(action==='check') act('hero','check');
     else if(action==='call') act('hero','call');
     else if(action==='betHalf') act('hero','bet', maxBet+Math.round(pot*0.5));
     else if(action==='betPot') act('hero','bet', maxBet+pot);
     else if(action==='allin') act('hero','bet', hand.bet['hero']+heroStack);
+    showCoachModal(verdict);
   }
 
   function render(){
-    const c=document.getElementById('sim-content');
+    const c=document.getElementById('practice-content');
     if(!session){
       const st=Save.data.spinStats;
+      const cs=Save.data.coachStats;
       c.innerHTML=`
-        <div class="mascot-row"><div class="mascot-emoji">🦈</div><div class="speech-bubble">Lance un Spin & Go d'entraînement : 3 joueurs, tapis de départ 500 jetons (25 BB), blindes qui montent toutes les 3 mains. Un adversaire est récréatif 🐟 (loose-passif), l'autre est régulier 🧠 (plus solide).</div></div>
+        <div class="mascot-row"><div class="mascot-emoji">🧑‍🏫</div><div class="speech-bubble">Joue un Spin & Go (3 joueurs, tapis de 500 jetons, blindes qui montent toutes les 3 mains) : un coach analyse chaque action que tu prends et t'explique si c'était optimal, et comment t'améliorer.</div></div>
         <div class="stats-grid">
           <div class="stat-card"><div class="v">${st.played}</div><div class="l">Spins joués</div></div>
           <div class="stat-card"><div class="v">${st.won}</div><div class="l">Spins gagnés</div></div>
+          <div class="stat-card"><div class="v">${cs.decisions}</div><div class="l">Décisions analysées</div></div>
+          <div class="stat-card"><div class="v">${cs.decisions?Math.round(cs.good/cs.decisions*100):0}%</div><div class="l">Décisions solides</div></div>
         </div>
-        <button class="btn btn-green btn-block" onclick="Sim.startSpin()">Lancer un Spin & Go</button>
+        <button class="btn btn-green btn-block" onclick="Practice.startSpin()">Lancer une session</button>
       `;
       return;
     }
@@ -1861,10 +1853,10 @@ const Sim=(function(){
           <div style="font-size:22px;font-weight:900;margin:6px 0;">${title}</div>
           <div>+${session.xpAwarded||0} XP</div>
         </div>
-        <div class="sim-log" id="sim-log"></div>
-        <button class="btn btn-green btn-block" style="margin-top:14px;" onclick="Sim.startSpin()">Nouveau Spin & Go</button>
+        <div class="sim-log" id="practice-log"></div>
+        <button class="btn btn-green btn-block" style="margin-top:14px;" onclick="Practice.startSpin()">Nouvelle session</button>
       `;
-      const logEl=document.getElementById('sim-log');
+      const logEl=document.getElementById('practice-log');
       logEl.innerHTML=hand.log.map(l=>`<div>${l}</div>`).join('');
       return;
     }
@@ -1883,7 +1875,7 @@ const Sim=(function(){
     let revealHtml='';
     if(hand.done && hand.stage==='showdown'){
       revealHtml = hand.ids.filter(id=>id!=='hero' && !hand.folded[id]).map(id=>{
-        return `<div class="hero-label">${nameOf(id)}</div><div id="sim-reveal-${id}"></div>`;
+        return `<div class="hero-label">${nameOf(id)}</div><div id="practice-reveal-${id}"></div>`;
       }).join('');
     }
     c.innerHTML=`
@@ -1892,24 +1884,24 @@ const Sim=(function(){
       <div class="table-felt">
         <div class="pot-display">Pot : ${pot}${heroToCall>0 && isHeroTurn?' — à suivre : '+heroToCall:''}</div>
         <div class="board-label" style="color:#fff;opacity:.8;">Board</div>
-        <div id="sim-board"></div>
+        <div id="practice-board"></div>
         <div class="hero-label">Vos cartes</div>
-        <div id="sim-hero-hole"></div>
+        <div id="practice-hero-hole"></div>
         ${revealHtml}
       </div>
-      <div class="sim-actions" id="sim-actions"></div>
-      <div class="sim-log" id="sim-log"></div>
-      ${hand.done?'<button class="btn btn-green btn-block" style="margin-top:14px;" onclick="Sim.nextHand()">Main suivante</button>':''}
+      <div class="sim-actions" id="practice-actions"></div>
+      <div class="sim-log" id="practice-log"></div>
+      ${hand.done?'<button class="btn btn-green btn-block" style="margin-top:14px;" onclick="Practice.nextHand()">Main suivante</button>':''}
     `;
-    document.getElementById('sim-board').appendChild(cardsRow(hand.board,{small:true}));
-    document.getElementById('sim-hero-hole').appendChild(cardsRow(hand.holes['hero'],{small:true}));
+    document.getElementById('practice-board').appendChild(cardsRow(hand.board,{small:true}));
+    document.getElementById('practice-hero-hole').appendChild(cardsRow(hand.holes['hero'],{small:true}));
     if(hand.done && hand.stage==='showdown'){
       hand.ids.filter(id=>id!=='hero' && !hand.folded[id]).forEach(id=>{
-        const el=document.getElementById('sim-reveal-'+id);
+        const el=document.getElementById('practice-reveal-'+id);
         if(el) el.appendChild(cardsRow(hand.holes[id],{small:true}));
       });
     }
-    const actionsEl=document.getElementById('sim-actions');
+    const actionsEl=document.getElementById('practice-actions');
     if(isHeroTurn){
       const mk=(label,cls,fn)=>{ const b=document.createElement('button'); b.className='btn btn-sm '+cls; b.textContent=label; b.onclick=fn; return b; };
       if(heroToCall<=0){
@@ -1924,12 +1916,49 @@ const Sim=(function(){
         actionsEl.appendChild(mk('All-in','btn-red',()=>heroAction('allin')));
       }
     }
-    const logEl=document.getElementById('sim-log');
+    const logEl=document.getElementById('practice-log');
     logEl.innerHTML=hand.log.map(l=>`<div>${l}</div>`).join('');
     logEl.scrollTop=logEl.scrollHeight;
   }
 
   return {render, startSpin, nextHand:()=>{ startHand(); }, heroAction};
+})();
+
+/* =========================================================================
+   COURS — relecture des cours déjà vus
+   ========================================================================= */
+const Courses=(function(){
+  function render(){
+    const c=document.getElementById('courses-content');
+    const seenUnits=UNITS.map(unit=>{
+      const lessons=unit.lessons.filter(lid=>!LESSONS[lid].checkpoint && (LESSONS[lid].slides||[]).length>0 && Save.data.progress[lid]);
+      return {unit, lessons};
+    }).filter(u=>u.lessons.length>0);
+    if(seenUnits.length===0){
+      c.innerHTML=`
+        <div class="mascot-row"><div class="mascot-emoji">📖</div><div class="speech-bubble">Termine ta première leçon dans le Parcours pour débloquer ta bibliothèque de cours !</div></div>
+      `;
+      return;
+    }
+    c.innerHTML=`
+      <div class="mascot-row"><div class="mascot-emoji">📖</div><div class="speech-bubble">Retrouve ici tous les cours des leçons que tu as déjà terminées.</div></div>
+      ${seenUnits.map(({unit,lessons})=>`
+        <div class="unit-banner" style="background:${unit.color};margin-left:0;margin-right:0;">
+          <div><h2>${unit.title}</h2><p>${unit.desc}</p></div><div class="u-icon">${unit.icon}</div>
+        </div>
+        ${lessons.map(lid=>`
+          <div class="setting-row">
+            <div><div class="lbl">${LESSONS[lid].icon} ${LESSONS[lid].title}</div><div class="sub">${LESSONS[lid].desc}</div></div>
+            <button class="btn btn-sm btn-blue" onclick="Courses.reviewLesson('${lid}')">Revoir</button>
+          </div>
+        `).join('')}
+      `).join('')}
+    `;
+  }
+  function reviewLesson(lid){
+    Lesson.review(LESSONS[lid]);
+  }
+  return {render, reviewLesson};
 })();
 
 /* =========================================================================
