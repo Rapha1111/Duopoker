@@ -883,6 +883,235 @@ function genEquityICM(){
   return sample(bank,8);
 }
 
+/* ---- Unit 1 (suite): 3-bet & défense des blinds ---- */
+const THREEBET_THRESHOLD=9, CALL_VS_OPEN_THRESHOLD=5;
+function genBlind3bet(){
+  const ex=[];
+  for(let i=0;i<8;i++){
+    let hole=drawRandom(2,[]);
+    if(Math.random()<0.4 && hole[0].r!==hole[1].r){ hole[1]={r:hole[1].r,s:hole[0].s}; }
+    const pos=pick(['SB','BB']);
+    const score=chenScore(hole);
+    let correctIdx;
+    if(score>=THREEBET_THRESHOLD) correctIdx=0;
+    else if(score>=CALL_VS_OPEN_THRESHOLD) correctIdx=1;
+    else correctIdx=2;
+    const choices=['3-bet (relancer)','Suivre (call)','Se coucher (fold)'];
+    const e=mkMCQ(`Le Bouton ouvre (relance). Tu es en ${POSITION_FULL[pos]} avec cette main. Quelle est la meilleure action ?`,choices,correctIdx,
+      `Score Chen : ${score}/20. Au-delà de ${THREEBET_THRESHOLD} : 3-bet pour la value. Entre ${CALL_VS_OPEN_THRESHOLD} et ${THREEBET_THRESHOLD} : un simple call est suffisant. En dessous de ${CALL_VS_OPEN_THRESHOLD} : la main est trop faible même avec les cotes favorables du 3-max. (Seuils simplifiés à but pédagogique — un vrai 3-bet équilibré inclut aussi des bluffs avec de bons blockers.)`);
+    e.cardsToShow=hole;
+    ex.push(e);
+  }
+  return ex;
+}
+
+/* ---- Unit 2 (suite): textures de board ---- */
+function genBoardTexture(){
+  const ex=[];
+  for(let i=0;i<4;i++){
+    const pattern=pick(['mono','two','rainbow']);
+    let suits;
+    if(pattern==='mono'){ const s=pick(SUITS); suits=[s,s,s]; }
+    else if(pattern==='two'){ const s=pick(SUITS); let s2; do{s2=pick(SUITS);}while(s2===s); suits=shuffle([s,s,s2]); }
+    else { suits=shuffle(SUITS).slice(0,3); }
+    let ranks=[]; while(ranks.length<3){ const r=2+Math.floor(Math.random()*13); if(!ranks.includes(r)) ranks.push(r); }
+    const flop=ranks.map((r,idx)=>({r,s:suits[idx]}));
+    const label={mono:'Monotone (3 cartes de la même couleur)',two:'Bicolore (2 cartes de la même couleur)',rainbow:'Arc-en-ciel (3 couleurs différentes)'};
+    const opts=shuffle(Object.values(label));
+    const correctLabel=label[pattern];
+    const e=mkMCQ("Comment qualifie-t-on la texture de couleur de ce flop ?",opts,opts.indexOf(correctLabel),`Ce flop est ${correctLabel.toLowerCase()}, ce qui influence le risque de couleur possible et donc la fiabilité d'une c-bet.`);
+    e.cardsToShow=flop; e.boardLabel="Flop";
+    ex.push(e);
+  }
+  for(let i=0;i<4;i++){
+    const mode=pick(['connected','spread']);
+    let ranks;
+    if(mode==='connected'){ const low=2+Math.floor(Math.random()*10); ranks=[low,low+1,low+2]; }
+    else {
+      const r1=2+Math.floor(Math.random()*2), r3=13+Math.floor(Math.random()*2);
+      const lo=r1+5, hi=r3-5;
+      ranks=[r1, lo+Math.floor(Math.random()*(hi-lo+1)), r3];
+    }
+    const flop=shuffle(ranks).map(r=>({r,s:pick(SUITS)}));
+    const label=mode==='connected'?'Connecté / humide (wet) : tirages de quinte probables':'Déconnecté / sec (dry) : peu de tirages de quinte';
+    const otherLabel=mode==='connected'?'Déconnecté / sec (dry) : peu de tirages de quinte':'Connecté / humide (wet) : tirages de quinte probables';
+    const opts=shuffle([label,otherLabel]);
+    const e=mkMCQ("Ce flop est-il plutôt humide (wet) ou sec (dry) ?",opts,opts.indexOf(label),`Les hauteurs ${ranks.map(r=>RANK_SYM[r]).join('-')} forment un flop ${mode==='connected'?'humide : plus de mains adverses ont un tirage, la c-bet doit être plus sélective.':'sec : peu de mains adverses ont touché quelque chose, la c-bet y est plus fiable.'}`);
+    e.cardsToShow=flop; e.boardLabel="Flop";
+    ex.push(e);
+  }
+  return ex;
+}
+
+/* ---- Unit 3 (suite): sizing avancé & lectures postflop ---- */
+function genBetSizing(){
+  const ex=[];
+  const staticQ=[
+    mkMCQ("Une mise « petite » (25-40% du pot) est généralement associée à :",["Une range plus large incluant des mains moyennes et un peu de bluff (souvent utilisée sur board sec)","Une main obligatoirement très forte","Une main obligatoirement un bluff","Un tapis très court uniquement"],0,"Les petites mises permettent de miser une range large à faible risque, en particulier sur des boards secs où l'adversaire a rarement un gros morceau."),
+    mkMCQ("Une mise « polarisée » (souvent grosse, 75-150% du pot) contient typiquement :",["Des mains très fortes ET des bluffs, sans mains moyennes","Uniquement des mains moyennes","Uniquement des mains très fortes","Uniquement des bluffs"],0,"Le sizing polarisé sert à maximiser la value avec le nu du nu tout en donnant du poids aux bluffs, sur des boards où les mains moyennes préfèrent checker."),
+    mkMCQ("Le « sizing géométrique » sur plusieurs rues consiste à :",["Miser des tailles qui, mises bout à bout, mènent le héros à l'all-in pile à la river","Toujours miser la même taille à chaque rue","Miser au hasard à chaque rue","Ne miser qu'à la river"],0,"Un plan de sizing géométrique répartit la pression progressivement sur flop/turn/river pour amener le pot à la taille du tapis exactement à la river, maximisant la pression sur les rues suivantes."),
+    mkTF("Miser plus gros avec ses value bets qu'avec ses bluffs est une erreur d'équilibrage flagrante que les joueurs observateurs peuvent exploiter.",true,"Un joueur équilibré utilise la même distribution de tailles pour ses values et ses bluffs, afin de ne pas être lisible — mais contre un joueur récréatif qui ne remarque pas ces patterns, ce n'est pas prioritaire (unité 4)."),
+    mkMCQ("Le « triple barrel » désigne :",["Miser sur les 3 rues (flop, turn, river) pour représenter une main forte du début à la fin","Miser 3 fois sur la même rue","Relancer 3 fois préflop","Miser exactement 3 fois le pot"],0,"C'est une ligne agressive qui maintient la pression sur les 3 rues : très efficace contre un adversaire capable de se coucher, dangereuse contre un calling station."),
+  ];
+  staticQ.forEach(q=>ex.push(q));
+  for(let i=0;i<5;i++){
+    const pot=pick([60,80,100,120,150,180,220]);
+    const pctChoices=[{label:"Un tiers du pot (33%)",mult:0.33},{label:"Deux tiers du pot (66%)",mult:0.66},{label:"Le pot (100%)",mult:1},{label:"Une fois et demie le pot (150%)",mult:1.5}];
+    const target=pick(pctChoices);
+    const correctVal=Math.round(pot*target.mult);
+    const distractors=pctChoices.filter(c=>c!==target).map(c=>Math.round(pot*c.mult));
+    const allVals=shuffle([correctVal,...sample(distractors,3)]);
+    const e=mkMCQ(`Le pot est de ${pot}. Combien représente une mise de "${target.label}" ?`,allVals.map(v=>v.toString()),allVals.indexOf(correctVal),`${target.label} d'un pot de ${pot} = ${correctVal}.`);
+    ex.push(e);
+  }
+  return sample(ex,8);
+}
+function genPostflopAdvanced(){
+  const bank=[
+    mkMCQ("Un « check-raise » consiste à :",["Checker puis relancer après la mise de l'adversaire, dans le même tour","Relancer puis checker","Checker deux fois de suite","Relancer avant que l'adversaire ait misé"],0,"Le check-raise piège l'adversaire en simulant la faiblesse (check) avant de relancer sa mise — efficace avec les mains très fortes ou en semi-bluff sur un bon tirage."),
+    mkMCQ("Le « float » consiste à :",["Suivre une mise avec une main faible dans l'intention de bluffer sur une rue suivante si l'adversaire checke","Miser avec une main faible","Se coucher immédiatement","Relancer avec une main très forte"],0,"Le floater suit sur une rue en pariant que l'adversaire, ayant raté son coup, checkera la rue suivante — ce qui ouvre la porte à un bluff."),
+    mkTF("Le check-raise avec un tirage (semi-bluff) permet de gagner le pot immédiatement si l'adversaire se couche, tout en gardant une bonne équité s'il suit.",true,"C'est l'intérêt principal du semi-bluff : deux façons de gagner le coup (fold immédiat ou toucher son tirage)."),
+    mkMCQ("Contre un adversaire qui c-bet systématiquement (100% du temps) peu importe sa main, quel ajustement est le plus rentable ?",["Floater/relancer plus large, car sa mise ne représente presque aucune information sur sa main","Toujours se coucher face à sa c-bet","Ne jamais relancer contre lui","Se coucher plus souvent qu'en temps normal"],0,"Une c-bet systématique ne représente rien de spécifique : on peut la challenger plus souvent avec des calls, floats et relances qu'on ne le ferait contre un adversaire sélectif."),
+    mkMCQ("Sur quelle rue un check-raise est-il généralement le plus crédible (le plus souvent une main forte) ?",["La river, car il ne reste plus de carte à venir pour bluffer un tirage manqué à peu de frais","Le flop, systématiquement","Le turn, systématiquement","Aucune rue n'est plus crédible qu'une autre"],0,"À la river, un check-raise ne peut plus être un semi-bluff sur tirage (il n'y a plus de carte à venir) : il représente presque toujours une main faite forte, sauf bluff pur."),
+    mkTF("Floater avec l'intention de bluffer plus tard n'a de sens que si l'adversaire est capable de checker et de se coucher sur les rues suivantes.",true,"Contre un adversaire qui continue à miser à chaque rue (calling station agressive) ou qui ne se couche jamais, le plan de float perd tout son intérêt."),
+  ];
+  return sample(bank,8);
+}
+
+/* ---- Unit 4 (suite): tells de sizing et de timing ---- */
+function genTells(){
+  const bank=[
+    mkMCQ("En ligne, une mise instantanée (sans délai de réflexion) après le flop suggère souvent :",["Une décision déjà prise à l'avance (souvent une main faite forte à value, ou un bluff pré-planifié)","Toujours une main très faible","Toujours un bluff","Rien du tout, ce n'est jamais significatif"],0,"Un temps de réaction très court signale souvent que le joueur avait déjà décidé de son action avant même de voir la carte — fréquent avec les mains très fortes ou les plans de bluff pré-établis."),
+    mkMCQ("Un long temps de réflexion avant une grosse mise suggère le plus souvent :",["Une décision difficile, souvent une main moyenne ou un bluff hésitant, plutôt qu'une main évidente","Une main automatiquement très forte","Une main automatiquement très faible","Un bug du logiciel"],0,"L'hésitation trahit généralement une décision non-évidente : les mains « faciles à jouer » (très fortes ou très faibles) demandent en général moins de réflexion."),
+    mkMCQ("Une très petite mise inhabituelle (mise « de blocage ») sur une rue tardive signale souvent :",["Une main moyenne qui veut voir l'abattage à moindre coût, pas une main très forte","Une main toujours très forte","Un bluff énorme","La meilleure main possible sur ce board"],0,"La mise de blocage (block bet) sert à limiter la taille du pot avec une main moyenne, en empêchant l'adversaire de miser gros lui-même."),
+    mkMCQ("Un joueur qui a systématiquement misé 75% du pot avec ses mains fortes précédentes, et mise soudainement 25% : que peux-tu en déduire ?",["Un changement de pattern qui mérite d'être noté — possible main plus faible ou tentative de piège","Rien, la taille de la mise n'a jamais d'importance","Qu'il a forcément une main plus forte que d'habitude","Qu'il va se coucher au prochain tour"],0,"Suivre les patterns de sizing d'un adversaire (surtout récréatif, souvent peu conscient de ses propres habitudes) permet de détecter des écarts significatifs."),
+    mkTF("Les tells de timing et de sizing sont plus fiables sur un joueur récréatif inconstant que sur un joueur régulier qui varie volontairement ses tailles pour rester imprévisible.",true,"Un joueur régulier équilibre consciemment ses tailles ; un joueur récréatif révèle souvent des patterns involontaires plus exploitables."),
+    mkMCQ("Pourquoi faut-il rester prudent avec les tells en ligne par rapport au live ?",["Ils sont plus bruités (connexion, distraction, habitudes de clic) et moins fiables individuellement : mieux vaut accumuler plusieurs indices avant d'agir","Ils n'existent pas du tout en ligne","Ils sont toujours 100% fiables en ligne aussi","Le format Spin & Go les rend inutiles"],0,"Un seul tell isolé peut être un faux signal (latence, distraction) : la fiabilité vient de la répétition d'un pattern chez le même adversaire."),
+    mkMCQ("Un joueur mise très rapidement un « overbet » (mise supérieure au pot) : dans quel cas est-ce le plus cohérent ?",["Une ligne planifiée à l'avance, souvent une main très forte (voire nut) ou un bluff total avec un bon blocker","Toujours un coup de bluff","Toujours une erreur de manipulation","Une main automatiquement moyenne"],0,"Les overbets rapides sont souvent des lignes préparées : les joueurs qui les utilisent le font en général avec des mains polarisées (très fortes ou bluffs), rarement avec des mains moyennes."),
+  ];
+  return sample(bank,7);
+}
+
+/* ---- Unit 5 (suite): lecture de mains & blockers ---- */
+function genHandReading(){
+  const bank=[
+    mkMCQ("La première étape de la lecture de mains consiste à :",["Définir la range de départ de l'adversaire selon sa position et son action préflop","Deviner directement ses deux cartes exactes","Ignorer le préflop et se concentrer uniquement sur la river","Attendre l'abattage pour savoir"],0,"On construit toujours une lecture de mains en partant d'une range large (déterminée par la position et l'action préflop), puis on la resserre progressivement."),
+    mkMCQ("Comment la range d'un adversaire évolue-t-elle généralement au fil des rues ?",["Elle se resserre à chaque action (mise, relance, call) qui élimine les mains incompatibles","Elle s'élargit à chaque rue","Elle reste toujours identique du préflop à la river","Elle devient aléatoire à la river"],0,"Chaque action supplémentaire (surtout une mise ou une relance) élimine généralement une partie des mains les plus faibles de la range, la resserrant progressivement."),
+    mkMCQ("Un adversaire relance préflop, puis c-bet le flop, puis mise à nouveau gros sur un turn qui complète une couleur : quelle partie de sa range initiale colle le mieux à cette ligne ?",["Les mains contenant des cartes de la couleur complétée, ou des mains déjà très fortes indépendamment de la couleur","Uniquement des mains sans aucun rapport avec la couleur","Toutes les mains de sa range initiale à parts égales","Uniquement des bluffs"],0,"Une ligne agressive sur une carte qui complète un tirage évident doit faire monter la probabilité que l'adversaire ait justement ce tirage (ou une main assez forte pour continuer sans lui)."),
+    mkMCQ("Qu'est-ce qu'un « combo » en poker ?",["Une combinaison précise de 2 cartes (par exemple A♠K♠ est un combo différent de A♥K♥)","Une combinaison de 5 cartes à l'abattage","Un synonyme de range","Le nombre de joueurs à la table"],0,"Un combo désigne une paire de cartes spécifique avec ses enseignes précises. AK offsuit représente 12 combos différents, AK suited seulement 4."),
+    mkTF("Il existe plus de combos pour une main non-assortie (offsuit) que pour la même main assortie (suited).",true,"Par exemple, il y a 12 combos d'AK offsuit (4×3) contre seulement 4 combos d'AK suited — un facteur important en combinatoire de range."),
+    mkMCQ("Pourquoi la lecture de mains est-elle particulièrement importante en Spin & Go plutôt qu'en cash game profond ?",["Parce que les décisions sont rapides et les tapis souvent courts : une lecture correcte permet de prendre les bonnes décisions push/fold ou call/fold sans hésiter","Parce que la lecture de mains ne sert à rien en Spin & Go","Parce que le format donne accès aux cartes de l'adversaire","Ce n'est pas plus important qu'ailleurs"],0,"Avec un temps de réflexion limité et des tapis qui évoluent vite, une lecture de mains efficace et rapide est un avantage décisif en format turbo."),
+  ];
+  return sample(bank,7);
+}
+function genBlockers(){
+  const bank=[
+    mkMCQ("Qu'est-ce qu'un « blocker » ?",["Une carte que tu détiens qui réduit le nombre de combinaisons possibles d'une main adverse précise","Une carte qui t'empêche de miser","Une règle qui bloque les relances","Un joueur qui bloque le tour de parole"],0,"Un blocker est une carte en ta possession qui rend certaines combinaisons de main adverses impossibles ou moins probables — utile pour bluffer ou pour juger la probabilité qu'un adversaire ait la main qu'on redoute."),
+    mkTF("Détenir l'As d'une couleur quand le board affiche 4 cartes de cette couleur t'assure de bloquer la meilleure couleur (nut) possible pour l'adversaire.",true,"Puisque tu détiens l'As de cette couleur, aucun adversaire ne peut avoir la couleur maximale."),
+  ];
+  const ex=[...bank];
+  for(let i=0;i<6;i++){
+    const suit=pick(SUITS);
+    const otherSuit=pick(SUITS.filter(s=>s!==suit));
+    const heroHasNutBlocker=Math.random()<0.5;
+    const suitRanksPool=shuffle([2,3,4,5,6,7,8,9,10,11,12,13]);
+    const boardSuitedRanks=suitRanksPool.slice(0,3);
+    const heroCard = heroHasNutBlocker? {r:14,s:suit} : {r:suitRanksPool[3],s:suit};
+    const offSuitRank=pick([2,3,4,5,6,7,8,9,10,11,12,13].filter(r=>!boardSuitedRanks.includes(r)));
+    const board=[{r:boardSuitedRanks[0],s:suit},{r:boardSuitedRanks[1],s:suit},{r:boardSuitedRanks[2],s:suit},{r:offSuitRank,s:otherSuit}];
+    const e=mkTF(`Le board affiche 4 cartes de ${SUIT_NAME[suit]} (couleur possible). Tu tiens ${RANK_SYM[heroCard.r]}${SUIT_SYM[heroCard.s]}. Cela bloque-t-il la couleur "nut" (As de ${SUIT_NAME[suit]}) ?`,heroHasNutBlocker,`${heroHasNutBlocker?`Tu détiens l'As de ${SUIT_NAME[suit]} : aucun adversaire ne peut donc avoir la meilleure couleur possible — c'est un excellent blocker pour bluffer ici.`:`Tu ne détiens pas l'As de ${SUIT_NAME[suit]} : un adversaire pourrait donc avoir la couleur nut.`}`);
+    e.cardsToShow=[heroCard];
+    e.boardCards=board;
+    e.boardLabel="Board (4 cartes visibles)";
+    ex.push(e);
+  }
+  return sample(ex,8);
+}
+
+/* ---- Unit 6 (nouvelle) : Le jeu heads-up ---- */
+const HU_OPEN_THRESHOLD=2;
+function genHURanges(){
+  const bank=[
+    mkMCQ("Dès qu'un des 3 joueurs d'un Spin & Go est éliminé, la partie devient :",["Un heads-up (2 joueurs) avec la même structure de blindes qui continue de monter","Terminée immédiatement","Un nouveau 3-max avec un joueur qui rejoint","Rejouée depuis le début"],0,"Le format bascule automatiquement en heads-up dès qu'il ne reste que 2 joueurs, sans interruption de la structure de blindes."),
+    mkTF("Les ranges d'ouverture en heads-up sont encore plus larges qu'en 3-max.",true,"Avec un seul adversaire à affronter, le risque de tomber sur une main dominante est encore plus faible : on peut ouvrir la quasi-totalité des mains au Bouton en heads-up profond."),
+    mkMCQ("En heads-up, quelle est la position du Bouton par rapport aux blindes ?",["Le Bouton est aussi la Petite Blind (SB) : il n'y a que 2 positions, BTN/SB et BB","Le Bouton est une position séparée de la Petite Blind","Il n'y a pas de bouton en heads-up","Le Bouton devient la Grosse Blind"],0,"En heads-up, le Bouton poste la petite blind et agit en premier préflop, l'autre joueur poste la grosse blind."),
+  ];
+  const ex=[...bank];
+  for(let i=0;i<5;i++){
+    let hole=drawRandom(2,[]);
+    if(Math.random()<0.4 && hole[0].r!==hole[1].r){ hole[1]={r:hole[1].r,s:hole[0].s}; }
+    const score=chenScore(hole);
+    const shouldOpen=score>=HU_OPEN_THRESHOLD;
+    const e=mkTF(`Tu es au Bouton en heads-up (tapis profond). Avec cette main, dois-tu ouvrir (relancer) ?`,shouldOpen,
+      `Score Chen : ${score}/20. Seuil d'ouverture en heads-up ≈ ${HU_OPEN_THRESHOLD} (extrêmement large, car un seul adversaire à affronter). ${shouldOpen?"Cette main passe largement le seuil très bas du heads-up.":"Même avec un seuil aussi bas, cette main reste trop faible."} (Règle simplifiée à but pédagogique — en pratique quasiment 100% des mains sont jouables au Bouton en HU profond.)`);
+    e.cardsToShow=hole;
+    ex.push(e);
+  }
+  return sample(ex,8);
+}
+function genHUPostflop(){
+  const bank=[
+    mkMCQ("Pourquoi l'agressivité post-flop est-elle encore plus importante en heads-up qu'en 3-max ?",["Parce qu'il n'y a qu'un seul adversaire, qui touche rarement le board de façon forte : la fold equity est très élevée","Parce que les mises sont plus petites en heads-up","Parce que les règles imposent plus d'agressivité","Ce n'est pas différent du 3-max"],0,"Avec un seul adversaire, la probabilité qu'il ait touché fortement le board est plus faible qu'en multiway : une c-bet ou une relance a donc plus de chances de réussir."),
+    mkTF("En heads-up, il est correct de continuer à miser (c-bet) une grande majorité des flops en tant qu'agresseur préflop.",true,"Le manque de rencontre avec le board de l'adversaire en heads-up justifie une fréquence de c-bet très élevée, bien plus qu'en 3-way ou en 6-max."),
+    mkMCQ("Face à un adversaire heads-up passif qui checke-call systématiquement, quel ajustement est le plus rentable ?",["Value bet plus large et plus gros, bluffer moins souvent","Bluffer plus souvent","Se coucher plus souvent","Ne jamais miser"],0,"Contre un adversaire qui ne se couche presque jamais, la stratégie value-heavy (comme contre un calling station, unité 4) est optimale."),
+    mkMCQ("Face à un adversaire heads-up très agressif qui relance sans cesse, quel ajustement est correct ?",["Resserrer légèrement ses calls et privilégier les relances avec des mains solides plutôt que de simplement suivre passivement","Se coucher à chaque relance","Toujours all-in en réponse","Ignorer complètement son agressivité"],0,"Contre un joueur trop agressif, suivre passivement laisse trop d'initiative à l'adversaire : il faut le punir avec des relances quand la main est suffisamment forte."),
+  ];
+  return sample(bank,7);
+}
+function genHUShortstack(){
+  const ex=[];
+  const stacks=[4,6,8,10,13,16,20];
+  for(let i=0;i<8;i++){
+    let hole=drawRandom(2,[]);
+    if(Math.random()<0.4 && hole[0].r!==hole[1].r){ hole[1]={r:hole[1].r,s:hole[0].s}; }
+    const stackBB=pick(stacks);
+    const pos=pick(['BTN/SB','BB']);
+    const score=chenScore(hole);
+    const threshold=Math.max(1, pushFoldThreshold(stackBB,pos==='BB'?'BB':'BTN')-1);
+    const shouldAct=score>=threshold;
+    const actionWord = pos==='BB' ? 'payer (call) le tapis adverse' : 'pousser tout ton tapis (push all-in)';
+    const question=`Heads-up, ton tapis est de ${stackBB} big blinds, tu es ${pos==='BB'?'en Grosse Blind et ton adversaire pousse tout son tapis':'au Bouton/Petite Blind'}. Dois-tu ${actionWord} ?`;
+    const e=mkTF(question, shouldAct,
+      `Score Chen : ${score}/20. En heads-up, les seuils push/fold sont encore plus bas qu'en 3-max (un seul adversaire à battre) : seuil simplifié ≈ ${threshold}. ${shouldAct?`Cette main est assez forte pour ${actionWord}.`:'Cette main reste trop faible même avec un seuil aussi large.'} (Règle simplifiée à but pédagogique.)`);
+    e.cardsToShow=hole;
+    ex.push(e);
+  }
+  return ex;
+}
+
+/* ---- Unit 7 (nouvelle) : Bankroll, variance et mental ---- */
+function genBankroll(){
+  const ex=[];
+  const staticQ=[
+    mkMCQ("Pourquoi la gestion de bankroll est-elle particulièrement importante en Spin & Go ?",["Le multiplicateur aléatoire ajoute une variance supplémentaire de type « loterie » en plus de la variance normale du poker","Le Spin & Go n'a aucune variance, contrairement au cash game","La bankroll n'a aucune importance dans ce format","Les Spins garantissent toujours un gain minimum élevé"],0,"En plus de la variance classique du poker (gagner/perdre des mains), le tirage du multiplicateur ajoute une couche de variance type loterie : il faut une bankroll plus large que pour un cash game équivalent."),
+    mkMCQ("Quelle règle de bankroll est souvent recommandée pour jouer des Spin & Go sereinement ?",["Au moins 50 à 100 buy-ins du niveau de mise choisi","2 à 3 buy-ins suffisent largement","Il n'existe aucune règle standard","1000 buy-ins minimum, sinon il ne faut jamais jouer"],0,"À cause de la variance élevée (notamment sur les multiplicateurs rares mais énormes), une bankroll de 50 à 100 buy-ins est une recommandation courante pour absorber les creux sans descendre de niveau."),
+    mkMCQ("Que faire si ta bankroll descend significativement sous la règle recommandée pour ton niveau de mise actuel ?",["Descendre temporairement de niveau de mise (« move down ») jusqu'à reconstituer un coussin suffisant","Monter de niveau pour se refaire plus vite","Continuer à jouer exactement au même niveau quoi qu'il arrive","Arrêter de jouer au poker définitivement"],0,"Descendre de niveau temporairement est la réponse standard et disciplinée à une baisse de bankroll — c'est un outil de gestion du risque, pas un échec."),
+    mkTF("Le côté « loterie » du multiplicateur aléatoire signifie que la plupart des sessions se solderont par un léger déficit, compensé rarement par un gros multiplicateur.",true,"Statistiquement, les gros multiplicateurs sont rares : il faut accepter psychologiquement une majorité de sessions négatives ou neutres, rentables sur le long terme grâce aux rares gros coups et à l'edge de jeu."),
+  ];
+  staticQ.forEach(q=>ex.push(q));
+  for(let i=0;i<4;i++){
+    const buyin=pick([1,2,5,10,25]);
+    const bankroll=pick([50,150,300,600,1200,3000]);
+    const buyins=Math.round(bankroll/buyin);
+    const safe=buyins>=50;
+    const e=mkTF(`Ta bankroll totale est de ${bankroll}€ et tu envisages de jouer des Spin & Go à ${buyin}€ de buy-in (soit ${buyins} buy-ins). Est-ce raisonnable selon la règle des 50-100 buy-ins ?`,safe,
+      `${bankroll}€ / ${buyin}€ = ${buyins} buy-ins. ${safe?"C'est suffisant (au moins 50 buy-ins) pour absorber la variance de ce format.":"C'est insuffisant : il vaudrait mieux choisir un buy-in plus bas pour rester dans la zone de sécurité (50+ buy-ins)."}`);
+    ex.push(e);
+  }
+  return sample(ex,8);
+}
+function genTilt(){
+  const bank=[
+    mkMCQ("Qu'est-ce que le « tilt » ?",["Un état émotionnel négatif (frustration, colère) qui pousse à prendre des décisions moins rationnelles","Une stratégie de bluff avancée","Un type de tirage au poker","Une règle spécifique au Spin & Go"],0,"Le tilt désigne la perte de contrôle émotionnel (souvent après un bad beat ou une série de pertes) qui dégrade la qualité des décisions."),
+    mkMCQ("Quel déclencheur de tilt est particulièrement spécifique au format Spin & Go ?",["Rater un gros multiplicateur de justesse, ou enchaîner plusieurs petits multiplicateurs décevants","Jouer trop lentement","Avoir trop de temps de réflexion","Jouer contre des joueurs trop faibles"],0,"La dimension loterie du multiplicateur crée une frustration spécifique — l'impression d'être « dû » pour un gros coup peut pousser à des décisions irrationnelles (sur-jouer, prendre des risques inutiles)."),
+    mkMCQ("Quelle est une bonne pratique pour limiter l'impact du tilt ?",["Fixer une règle de stop-loss (arrêter la session après X pertes consécutives ou un seuil de pertes) et la respecter","Continuer à jouer coûte que coûte jusqu'à se refaire","Augmenter ses mises après une perte pour compenser plus vite","Ignorer complètement ses émotions, elles n'ont pas d'impact"],0,"Une règle de stop-loss définie à l'avance (et respectée) évite de prendre des décisions dégradées en pleine spirale émotionnelle."),
+    mkTF("Après un bad beat, il est recommandé de prendre une courte pause avant la main ou la partie suivante plutôt que d'enchaîner immédiatement.",true,"Une pause, même courte, permet de retrouver un état émotionnel neutre avant de reprendre des décisions importantes."),
+    mkMCQ("Le « revenge tilt » consiste à :",["Jouer de façon anormalement agressive contre un adversaire spécifique après avoir perdu un coup contre lui","Se coucher systématiquement après une perte","Changer de table après chaque main perdue","Une stratégie GTO reconnue"],0,"Le revenge tilt pousse à sur-jouer contre l'adversaire qui vient de « prendre » un coup, avec des décisions motivées par l'émotion plutôt que par la logique du jeu."),
+    mkTF("Un joueur semi-pro doit accepter que la variance à court terme (y compris de mauvaises séries) fait partie intégrante du jeu, même en jouant parfaitement.",true,"Même les meilleures décisions perdent parfois à court terme : la rentabilité se juge sur un grand nombre de mains, pas sur une session isolée."),
+  ];
+  return sample(bank,8);
+}
+
 const LESSON_SLIDES = {
   r_intro: [
     mkSlide("Qu'est-ce qu'un Spin & Go ?", `
@@ -1080,36 +1309,201 @@ const LESSON_SLIDES = {
       <div class="formula-box">Une 2e place ne rapportant presque rien, la prudence ICM classique est beaucoup moins pertinente ici : il vaut généralement mieux jouer proche du chip EV pur (maximiser tes jetons) plutôt que de « jouer petit bras » pour sécuriser une place qui ne paie presque pas.</div>
       <p>Nuance importante : dès qu'un joueur est éliminé, la partie devient un <strong>heads-up classique</strong> avec la même structure de blindes qui continue de progresser — tes compétences heads-up (ranges, agressivité) deviennent alors immédiatement déterminantes pour transformer ta 2e place potentielle en victoire.</p>
     `)
+  ],
+  r_3bet: [
+    mkSlide("3-bet, 4-bet et défense des blinds en 3-max", `
+      <p>Un <strong>3-bet</strong> est la relance faite en réponse à l'open d'un adversaire. En 3-max, ta range de 3-bet doit mélanger deux types de mains : des mains de <strong>value</strong> (assez fortes pour être relancées et jouées à l'aise si on te suit) et quelques <strong>bluffs</strong> (souvent des mains avec de bons blockers, par exemple A5 qui bloque les As adverses).</p>
+      <p>Face à un 3-bet, un <strong>4-bet</strong> (re-relance) représente en général une main très forte — la fréquence de bluff au 4-bet est plus faible qu'au 3-bet car l'engagement de tapis devient important.</p>
+      <div class="example-box">En 3-max, la Petite Blind (SB) et la Grosse Blind (BB) peuvent 3-bet beaucoup plus large qu'à 6-max face à l'open du Bouton, car il n'y a plus qu'un seul adversaire à convaincre et les ranges d'ouverture du BTN y sont elles-mêmes très larges.</div>
+    `),
+    mkSlide("Pourquoi défendre ses blinds plus largement en 3-max", `
+      <p>« Défendre » sa blind signifie continuer (call ou 3-bet) face à un open plutôt que de se coucher systématiquement. En 3-max, il faut défendre plus large qu'à 6-max pour deux raisons : la range d'ouverture adverse est elle-même très large (donc moins menaçante en moyenne), et se coucher trop souvent aux blindes est directement exploité par un adversaire qui open de plus en plus large.</p>
+      <p>La Grosse Blind (BB) bénéficie de <strong>cotes du pot favorables</strong> pour défendre (elle a déjà investi la BB et ferme l'action), ce qui élargit encore sa range de call rentable par rapport à un simple calcul d'équité brute.</p>
+      <p>À l'inverse, ne pas défendre du tout ses blindes est une fuite fréquente (y compris chez les joueurs réguliers) qui coûte cher sur la durée en format Spin & Go où les blindes reviennent très souvent.</p>
+    `)
+  ],
+  o_texture: [
+    mkSlide("Lire une texture de board en un coup d'œil", `
+      <p>Un board se décrit sur deux axes indépendants : sa <strong>texture de couleur</strong> (monotone = 3 cartes de la même enseigne, bicolore = 2, arc-en-ciel = 3 enseignes différentes) et sa <strong>connectivité</strong> (board humide/wet = hauteurs proches avec beaucoup de tirages de quinte possibles, ou sec/dry = hauteurs éloignées, peu de tirages).</p>
+      <p>Un board à la fois arc-en-ciel ET déconnecté (ex : K♠ 7♥ 2♦) est le plus « sec » possible : très peu de mains adverses ont pu toucher un tirage, ce qui rend la c-bet particulièrement fiable (unité 3).</p>
+      <p>À l'inverse, un board bicolore et connecté (ex : 9♥ 8♥ 7♠) est très humide : beaucoup de combinaisons de tirages couleur et quinte sont possibles, ce qui doit te rendre plus prudent avec une simple paire.</p>
+    `),
+    mkSlide("Les outs « sales » : éviter de surestimer son équité", `
+      <p>Tous les outs ne se valent pas. Un out est dit <strong>« sale »</strong> (discounted out) quand la carte qui complète ta main peut aussi donner une meilleure main à l'adversaire — il ne faut alors le compter qu'à moitié, voire pas du tout, dans ton estimation d'équité.</p>
+      <div class="example-box">Exemple : tu as un tirage quinte sur un board qui contient déjà 2 cartes de la même couleur. Certaines de tes cartes de quinte donnent aussi la couleur à un adversaire qui aurait un tirage couleur plus avancé que le tien — ces outs-là sont à discounter.</div>
+      <p>De même, ne compte jamais deux fois une carte qui appartient à la fois à ton tirage couleur et à ton tirage quinte (tirage combiné) : chaque carte physique n'est comptée qu'une seule fois dans ton total d'outs (unité 2, leçon « Compter ses outs »).</p>
+    `)
+  ],
+  cr_sizing: [
+    mkSlide("Choisir la bonne taille de mise", `
+      <p>La taille d'une mise communique (volontairement ou non) une partie de la force de ta range. Deux grandes familles de sizing :</p>
+      <ul>
+        <li><strong>Sizing petit (25-40% du pot)</strong> : range large incluant mains moyennes et quelques bluffs, faible risque, typique sur board sec où peu d'adversaires ont un gros tirage à protéger contre.</li>
+        <li><strong>Sizing polarisé (75-150%+ du pot)</strong> : réservé aux mains très fortes et aux bluffs, sans mains moyennes — typique sur board humide où les mains moyennes préfèrent souvent checker.</li>
+      </ul>
+      <p>Contre un adversaire récréatif qui ne remarque pas ces nuances (unité 4), la priorité reste simple : miser gros avec les mains fortes, éviter de bluffer sans raison contre lui.</p>
+    `),
+    mkSlide("Planifier plusieurs rues à l'avance (barreling)", `
+      <p>Une mise ne devrait jamais être pensée isolément : un joueur semi-pro planifie sa ligne sur plusieurs rues avant même d'avoir misé sur le flop. Le <strong>« triple barrel »</strong> (miser flop, turn et river) maintient la pression du début à la fin d'une main — puissant contre un adversaire capable de se coucher, dangereux contre un calling station qui ne fold jamais.</p>
+      <div class="formula-box">Sizing géométrique : choisir des tailles de flop/turn/river qui, mises bout à bout, amènent naturellement le pot à la taille du tapis restant exactement à la river — maximisant la pression sur la dernière rue.</div>
+      <p>Réfléchir à l'avance à « que ferai-je si l'adversaire suit ? » évite de se retrouver bloqué avec un tapis mal engagé sur les rues suivantes.</p>
+    `)
+  ],
+  cr_advanced: [
+    mkSlide("Check-raise : piéger l'adversaire", `
+      <p>Le <strong>check-raise</strong> consiste à checker puis relancer la mise de l'adversaire dans le même tour. Il sert deux objectifs : piéger une main très forte (l'adversaire mise, pensant que tu es faible, puis tu relances) ou semi-bluffer avec un bon tirage (tu gagnes immédiatement si l'adversaire se couche, et tu gardes ton équité de tirage sinon).</p>
+      <p>Sur la <strong>river</strong>, un check-raise ne peut plus être un semi-bluff sur tirage (plus de carte à venir) : il représente donc presque toujours une main faite très forte, ou un bluff pur assumé — c'est le check-raise le plus crédible à respecter.</p>
+    `),
+    mkSlide("Le float : suivre pour bluffer plus tard", `
+      <p>Le <strong>float</strong> consiste à suivre une mise avec une main faible, dans l'intention de bluffer sur une rue suivante si l'adversaire montre un signe de faiblesse (typiquement un check). C'est un pari sur le comportement futur de l'adversaire, pas sur ta main actuelle.</p>
+      <p>Le float ne fonctionne que contre un adversaire capable de checker puis de se coucher — inutile contre un joueur qui continue de miser à chaque rue (auquel cas, autant appliquer la stratégie value-only de l'unité 4).</p>
+      <p>Contre une c-bet systématique (100% des flops, sans discrimination de main), floater et relancer plus large devient très rentable : la mise adverse ne représente presque aucune information.</p>
+    `)
+  ],
+  ex_tells: [
+    mkSlide("Tells de timing : ce que révèle la vitesse de décision", `
+      <p>En ligne, le temps de réflexion avant une action est une information précieuse. Une mise <strong>instantanée</strong> signale souvent une décision déjà prise à l'avance — fréquent avec les mains très fortes (value évidente) ou les bluffs pré-planifiés.</p>
+      <p>Un <strong>long temps de réflexion</strong> avant une grosse mise trahit en général une décision non-évidente : les mains extrêmes (très fortes ou très faibles) demandent généralement moins de réflexion que les mains moyennes ou les bluffs hésitants.</p>
+      <p>Un seul tell isolé reste peu fiable (latence, distraction) : la vraie valeur vient de la <strong>répétition d'un pattern</strong> chez un même adversaire sur plusieurs mains.</p>
+    `),
+    mkSlide("Tells de sizing : repérer les patterns de mise", `
+      <p>Beaucoup de joueurs récréatifs utilisent, sans en avoir conscience, des tailles de mise différentes selon la force de leur main (par exemple, mise petite avec une main moyenne, mise grosse avec une main très forte). Repérer ces patterns sur plusieurs mains permet d'ajuster tes calls/folds avec bien plus de précision qu'un simple raisonnement générique.</p>
+      <div class="example-box">Si un adversaire a systématiquement misé 75% du pot avec ses mains fortes précédentes, et mise soudainement 25% du pot : ce changement de pattern est un signal à ne pas ignorer.</div>
+      <p>Un joueur régulier, conscient de ce risque, varie volontairement ses tailles pour rester imprévisible — les tells de sizing sont donc bien plus fiables contre un récréatif inconstant que contre un joueur expérimenté.</p>
+    `)
+  ],
+  eq_reading: [
+    mkSlide("Construire une range adverse, rue par rue", `
+      <p>La lecture de mains ne consiste jamais à deviner deux cartes précises, mais à raisonner sur un <strong>ensemble de mains compatibles</strong> avec toutes les actions observées, et à le resserrer progressivement à chaque rue.</p>
+      <ol>
+        <li><strong>Préflop</strong> : la position et l'action (open, call, 3-bet) définissent une range de départ.</li>
+        <li><strong>Flop</strong> : la mise ou le check élimine une partie de cette range (ex : une c-bet sur un board très humide élimine rarement les mains faibles chez un joueur sélectif).</li>
+        <li><strong>Turn/River</strong> : chaque mise supplémentaire, surtout sur une carte qui complète un tirage évident, doit faire monter la probabilité que l'adversaire ait justement ce tirage — ou une main assez forte pour continuer sans lui.</li>
+      </ol>
+    `),
+    mkSlide("Les combos : la base de la combinatoire de range", `
+      <p>Un <strong>combo</strong> est une combinaison précise de 2 cartes avec leurs enseignes exactes (A♠K♠ est un combo différent de A♥K♥). Une main non-assortie comme AK offsuit représente <strong>12 combos</strong> (4 As × 3 Rois restants), alors que AK suited n'en représente que <strong>4</strong> (un par enseigne).</p>
+      <div class="formula-box">Une paire comme QQ représente 6 combos (4 dames, choisies 2 par 2 : C(4,2)=6). Une main non-paire non-assortie en représente 16, et assortie seulement 4.</div>
+      <p>Cette différence explique pourquoi les ranges de bluff bien construites utilisent souvent des mains avec de bons <strong>blockers</strong> (leçon suivante) : elles réduisent mécaniquement le nombre de combos adverses possibles.</p>
+    `)
+  ],
+  eq_blockers: [
+    mkSlide("Utiliser ses cartes pour bloquer la main adverse", `
+      <p>Un <strong>blocker</strong> est une carte que tu détiens qui réduit ou élimine certaines combinaisons de main adverse. Détenir l'As d'une couleur quand le board affiche 4 cartes de cette couleur garantit qu'aucun adversaire n'a la couleur maximale (nut) possible — un argument précieux pour juger un bluff ou une relance.</p>
+      <p>Les bons bluffs exploitent souvent des blockers : par exemple, bluffer avec A5 offsuit sur un board sans As ni 5 réduit le nombre de combos d'As que l'adversaire peut avoir, rendant ton bluff statistiquement plus crédible et moins souvent « payé » par une paire d'As.</p>
+    `),
+    mkSlide("Blockers et décisions de call/fold", `
+      <p>Les blockers fonctionnent aussi en défense : si tu détiens une carte qui bloque une grosse partie des mains fortes possibles de l'adversaire, tu peux te permettre de suivre (bluff-catcher) un peu plus large qu'en temps normal, car il lui reste statistiquement moins de combinaisons fortes pour value bet.</p>
+      <div class="example-box">Sur un board avec un tirage couleur évident, détenir l'As de cette couleur (même si tu n'as pas de main faite) réduit fortement la probabilité que l'adversaire ait complété la couleur nut — un argument pour ne pas te coucher trop facilement face à une mise.</div>
+      <p>Les blockers ne remplacent jamais un raisonnement complet (position, sizing, profil adverse) mais viennent l'affiner en fin de réflexion.</p>
+    `)
+  ],
+  hu_ranges: [
+    mkSlide("Le heads-up : la phase finale inévitable de tout Spin & Go", `
+      <p>Dès qu'un des 3 joueurs est éliminé, la partie devient un <strong>heads-up classique</strong> (2 joueurs), avec la même structure de blindes qui continue de progresser. Tes compétences heads-up sont donc systématiquement sollicitées à la fin de chaque Spin & Go — impossible de les éviter.</p>
+      <p>En heads-up, il n'existe que 2 positions : le <strong>Bouton</strong> (qui poste aussi la petite blind, agit en premier préflop mais en dernier post-flop) et la <strong>Grosse Blind</strong>.</p>
+    `),
+    mkSlide("Des ranges encore plus larges qu'en 3-max", `
+      <p>Avec un seul adversaire à affronter, le risque de tomber sur une main dominante est à son minimum : en heads-up profond, on peut ouvrir la quasi-totalité des mains au Bouton, et défendre très large en Grosse Blind.</p>
+      <div class="formula-box">Règle simplifiée : en heads-up profond, presque toutes les mains deviennent jouables au Bouton — la sélectivité préflop du 6-max ou même du 3-max n'a quasiment plus lieu d'être.</div>
+      <p>Cette largeur de range s'accompagne d'une exigence post-flop plus grande : jouer large préflop sans savoir bien naviguer les rues suivantes (unité suivante) devient rapidement coûteux.</p>
+    `)
+  ],
+  hu_postflop: [
+    mkSlide("Pourquoi l'agressivité paie encore plus en heads-up", `
+      <p>Avec un seul adversaire, la probabilité qu'il ait touché fortement le board reste faible dans l'absolu : une c-bet ou une relance y a donc une fold equity plus élevée qu'en 3-way ou en 6-max. Il est courant et correct de continuer (c-bet) une très large majorité des flops en tant qu'agresseur préflop en heads-up.</p>
+    `),
+    mkSlide("S'adapter au style de l'adversaire heads-up", `
+      <p>En heads-up, tu affrontes un seul profil à la fois — l'ajustement doit donc être immédiat et précis (unité 4 appliquée à un seul adversaire) :</p>
+      <ul>
+        <li><strong>Adversaire passif</strong> (check-call systématique) : value bet plus large et plus gros, bluffer beaucoup moins.</li>
+        <li><strong>Adversaire agressif</strong> (relance sans cesse) : resserrer légèrement les calls, privilégier les relances avec les mains solides plutôt que suivre passivement.</li>
+      </ul>
+      <p>Réévalue ce profil dès la transition 3-way → heads-up : l'adversaire qui reste n'est pas nécessairement celui que tu avais le plus observé pendant la phase à 3 joueurs.</p>
+    `)
+  ],
+  hu_shortstack: [
+    mkSlide("Push/fold heads-up : encore plus large que le 3-max", `
+      <p>Les seuils de push/fold heads-up sont systématiquement plus bas (donc les ranges plus larges) que les seuils 3-max équivalents à la même profondeur de tapis, pour la même raison que pour les ranges d'ouverture : un seul adversaire à battre.</p>
+      <div class="example-box">À 8 BB par exemple, une main qui serait un fold clair à 6-max peut devenir un push standard en heads-up — la fold equity et les cotes obtenues quand l'adversaire suit compensent largement l'équité brute plus faible de la main.</div>
+    `),
+    mkSlide("Transformer sa 2e place en victoire", `
+      <p>Comme la structure de gains du Spin & Go concentre l'essentiel de la valeur sur la 1ère place (unité 5), arriver en heads-up avec un tapis même très court n'est pas une fatalité : il faut continuer à jouer pour maximiser tes jetons plutôt que pour « bien finir 2e ».</p>
+      <p>Un joueur semi-pro qui maîtrise les ranges de push/fold heads-up transforme régulièrement des tapis courts en victoires, simplement en poussant la bonne range au bon moment plutôt qu'en attendant une main premium qui n'arrivera peut-être jamais avant l'élimination.</p>
+    `)
+  ],
+  bm_bankroll: [
+    mkSlide("Une variance à part : l'effet loterie du multiplicateur", `
+      <p>En plus de la variance normale du poker (gagner ou perdre une main), le Spin & Go ajoute une variance de type <strong>loterie</strong> : le multiplicateur de gain est tiré au hasard avant même la première carte, et les très gros multiplicateurs (parfois x10 000) sont rares mais représentent une partie importante du gain espéré à long terme.</p>
+      <p>Cette double variance impose une bankroll plus large que pour un cash game ou même un MTT classique de buy-in équivalent.</p>
+    `),
+    mkSlide("Règles pratiques de gestion de bankroll", `
+      <div class="formula-box">Recommandation courante : conserver au moins 50 à 100 buy-ins du niveau de mise choisi pour absorber les creux de variance sans risquer la ruine.</div>
+      <p>Si ta bankroll descend significativement sous ce seuil pour ton niveau actuel, la réponse disciplinée est de <strong>descendre temporairement de niveau</strong> (move down) plutôt que de continuer à jouer sous-bankrollé — ou pire, de monter de niveau pour « se refaire » plus vite, ce qui aggrave le risque de ruine.</p>
+      <p>Accepter qu'une majorité de sessions se solderont par un léger déficit (compensé par les rares gros multiplicateurs et l'edge de jeu sur la durée) fait partie intégrante d'une approche saine du format.</p>
+    `)
+  ],
+  bm_tilt: [
+    mkSlide("Reconnaître le tilt avant qu'il ne coûte cher", `
+      <p>Le <strong>tilt</strong> est un état émotionnel négatif (frustration, colère, impatience) qui dégrade la qualité des décisions. En Spin & Go, deux déclencheurs sont particulièrement fréquents : un <strong>bad beat</strong> classique, et la frustration spécifique de <strong>rater un gros multiplicateur</strong> ou d'enchaîner plusieurs petits multiplicateurs décevants.</p>
+      <p>Le <strong>revenge tilt</strong> (sur-jouer contre l'adversaire qui vient de te « prendre » un coup) est une variante particulièrement coûteuse : les décisions deviennent motivées par l'émotion plutôt que par la logique du jeu.</p>
+    `),
+    mkSlide("Des garde-fous simples et efficaces", `
+      <ul>
+        <li><strong>Règle de stop-loss</strong> : définir à l'avance un seuil de pertes ou un nombre de sessions négatives consécutives au-delà duquel on arrête, et s'y tenir.</li>
+        <li><strong>Pause courte après un bad beat</strong> : même quelques minutes suffisent à retrouver un état émotionnel neutre avant la main ou la partie suivante.</li>
+        <li><strong>Accepter la variance</strong> : même les meilleures décisions perdent parfois à court terme. La rentabilité s'évalue sur un grand volume de mains, jamais sur une session isolée.</li>
+      </ul>
+      <p>Un joueur semi-pro se distingue autant par la qualité de ses décisions techniques que par sa capacité à les maintenir constantes, session après session, indépendamment des résultats immédiats.</p>
+    `)
   ]
 };
 const LESSONS = {
   r_intro:{id:'r_intro',unit:1,title:'Le format Spin & Go',icon:'🎰',desc:'3-way, blindes progressives et positions',gen:genRangesIntro,slides:LESSON_SLIDES.r_intro},
   r_open:{id:'r_open',unit:1,title:'Ranges d\'ouverture 3-max',icon:'📊',desc:'Quelles mains ouvrir, tapis profond',gen:genRangesOpen,slides:LESSON_SLIDES.r_open},
+  r_3bet:{id:'r_3bet',unit:1,title:'3-bet et défense des blinds',icon:'🛡️',desc:'Relancer et défendre en 3-max',gen:genBlind3bet,slides:LESSON_SLIDES.r_3bet},
   r_pushfold:{id:'r_pushfold',unit:1,title:'Push/fold à tapis court',icon:'🚀',desc:'Quand les blindes montent',gen:genRangesPushfold,slides:LESSON_SLIDES.r_pushfold},
-  r_chk:{id:'r_chk',unit:1,checkpoint:true,title:'Révision : Ranges préflop',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genRangesIntro(),...genRangesOpen(),...genRangesPushfold()],12)},
+  r_chk:{id:'r_chk',unit:1,checkpoint:true,title:'Révision : Ranges préflop',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genRangesIntro(),...genRangesOpen(),...genBlind3bet(),...genRangesPushfold()],14)},
 
   o_count:{id:'o_count',unit:2,title:'Compter ses outs',icon:'🎯',desc:'Tirages de couleur, quinte, brelan...',gen:genOutsCount,slides:LESSON_SLIDES.o_count},
+  o_texture:{id:'o_texture',unit:2,title:'Textures de board',icon:'🀄',desc:'Sec, humide, outs sales',gen:genBoardTexture,slides:LESSON_SLIDES.o_texture},
   o_equity:{id:'o_equity',unit:2,title:'Règle du 2 et du 4',icon:'✖️',desc:'Convertir ses outs en équité',gen:genOutsEquity,slides:LESSON_SLIDES.o_equity},
-  o_chk:{id:'o_chk',unit:2,checkpoint:true,title:'Révision : Outs postflop',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genOutsCount(),...genOutsEquity()],12)},
+  o_chk:{id:'o_chk',unit:2,checkpoint:true,title:'Révision : Outs postflop',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genOutsCount(),...genBoardTexture(),...genOutsEquity()],14)},
 
   cr_potodds:{id:'cr_potodds',unit:3,title:'Cotes du pot',icon:'🧮',desc:'Suivre ou se coucher',gen:genPotOdds,slides:LESSON_SLIDES.cr_potodds},
+  cr_sizing:{id:'cr_sizing',unit:3,title:'Sizing et plan multi-rues',icon:'📏',desc:'Choisir sa taille de mise',gen:genBetSizing,slides:LESSON_SLIDES.cr_sizing},
   cr_valuebluff:{id:'cr_valuebluff',unit:3,title:'Value bet, bluff, relance',icon:'🎭',desc:'Miser pour valeur ou bluffer',gen:genValueBluff,slides:LESSON_SLIDES.cr_valuebluff},
-  cr_chk:{id:'cr_chk',unit:3,checkpoint:true,title:'Révision : Call/Raise postflop',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genPotOdds(),...genValueBluff()],12)},
+  cr_advanced:{id:'cr_advanced',unit:3,title:'Check-raise et float',icon:'🪤',desc:'Lectures postflop avancées',gen:genPostflopAdvanced,slides:LESSON_SLIDES.cr_advanced},
+  cr_chk:{id:'cr_chk',unit:3,checkpoint:true,title:'Révision : Call/Raise postflop',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genPotOdds(),...genBetSizing(),...genValueBluff(),...genPostflopAdvanced()],16)},
 
   ex_leaks:{id:'ex_leaks',unit:4,title:'Repérer les fuites',icon:'🔍',desc:'Les défauts des joueurs récréatifs',gen:genExploitLeaks,slides:LESSON_SLIDES.ex_leaks},
+  ex_tells:{id:'ex_tells',unit:4,title:'Tells de sizing et timing',icon:'👀',desc:'Lire les patterns adverses',gen:genTells,slides:LESSON_SLIDES.ex_tells},
   ex_adjust:{id:'ex_adjust',unit:4,title:'Ajustements exploitants',icon:'🧩',desc:'Comment les faire payer',gen:genExploitAdjust,slides:LESSON_SLIDES.ex_adjust},
-  ex_chk:{id:'ex_chk',unit:4,checkpoint:true,title:'Révision : Exploiter les recs',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genExploitLeaks(),...genExploitAdjust()],12)},
+  ex_chk:{id:'ex_chk',unit:4,checkpoint:true,title:'Révision : Exploiter les recs',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genExploitLeaks(),...genTells(),...genExploitAdjust()],14)},
 
   eq_vsrange:{id:'eq_vsrange',unit:5,title:'Équité vs adversaires',icon:'📈',desc:'Estimer tes chances de gagner',gen:genEquityVsRange,slides:LESSON_SLIDES.eq_vsrange},
+  eq_reading:{id:'eq_reading',unit:5,title:'Lecture de mains',icon:'🕵️',desc:'Construire une range adverse',gen:genHandReading,slides:LESSON_SLIDES.eq_reading},
+  eq_blockers:{id:'eq_blockers',unit:5,title:'Blockers et combinatoire',icon:'🚧',desc:'Utiliser ses cartes pour bloquer',gen:genBlockers,slides:LESSON_SLIDES.eq_blockers},
   eq_icm:{id:'eq_icm',unit:5,title:'ICM et décisions 3-way',icon:'🏆',desc:'La structure de gains du Spin',gen:genEquityICM,slides:LESSON_SLIDES.eq_icm},
-  eq_chk:{id:'eq_chk',unit:5,checkpoint:true,title:'Révision finale',icon:'🏆',desc:'Le grand test final !',gen:()=>sample([...genEquityVsRange(),...genEquityICM()],12)},
+  eq_chk:{id:'eq_chk',unit:5,checkpoint:true,title:'Révision : Évaluer ses chances',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genEquityVsRange(),...genHandReading(),...genBlockers(),...genEquityICM()],16)},
+
+  hu_ranges:{id:'hu_ranges',unit:6,title:'Ranges heads-up',icon:'⚔️',desc:'La phase finale de tout Spin',gen:genHURanges,slides:LESSON_SLIDES.hu_ranges},
+  hu_postflop:{id:'hu_postflop',unit:6,title:'Agressivité heads-up',icon:'🔥',desc:'C-bet et ajustements en HU',gen:genHUPostflop,slides:LESSON_SLIDES.hu_postflop},
+  hu_shortstack:{id:'hu_shortstack',unit:6,title:'Push/fold heads-up',icon:'🎯',desc:'Transformer sa 2e place en victoire',gen:genHUShortstack,slides:LESSON_SLIDES.hu_shortstack},
+  hu_chk:{id:'hu_chk',unit:6,checkpoint:true,title:'Révision : Heads-up',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genHURanges(),...genHUPostflop(),...genHUShortstack()],14)},
+
+  bm_bankroll:{id:'bm_bankroll',unit:7,title:'Gestion de bankroll',icon:'💰',desc:'La variance du multiplicateur',gen:genBankroll,slides:LESSON_SLIDES.bm_bankroll},
+  bm_tilt:{id:'bm_tilt',unit:7,title:'Contrôle du tilt',icon:'🧘',desc:'Rester rationnel sous pression',gen:genTilt,slides:LESSON_SLIDES.bm_tilt},
+  bm_chk:{id:'bm_chk',unit:7,checkpoint:true,title:'Révision finale',icon:'🏆',desc:'Le grand test final !',gen:()=>sample([...genBankroll(),...genTilt()],12)},
 };
 const UNITS=[
-  {id:1,title:'Unité 1 · Ranges préflop',desc:'Spin & Go 3-way et évolution des blindes',icon:'📊',color:'linear-gradient(135deg,#ce82ff,#a568cc)',lessons:['r_intro','r_open','r_pushfold','r_chk']},
-  {id:2,title:'Unité 2 · Les outs postflop',desc:'Compter ses outs et son équité',icon:'🎯',color:'linear-gradient(135deg,#ff4b4b,#d63a3a)',lessons:['o_count','o_equity','o_chk']},
-  {id:3,title:'Unité 3 · Call/Raise postflop',desc:'Cotes du pot, value bet et bluff',icon:'🎭',color:'linear-gradient(135deg,#00b894,#059669)',lessons:['cr_potodds','cr_valuebluff','cr_chk']},
-  {id:4,title:'Unité 4 · Exploiter les récréatifs',desc:'Repérer et exploiter les fuites',icon:'🔍',color:'linear-gradient(135deg,#ff9600,#e08400)',lessons:['ex_leaks','ex_adjust','ex_chk']},
-  {id:5,title:'Unité 5 · Évaluer ses chances',desc:'Équité et ICM en 3-way',icon:'📈',color:'linear-gradient(135deg,#1cb0f6,#1899d6)',lessons:['eq_vsrange','eq_icm','eq_chk']},
+  {id:1,title:'Unité 1 · Ranges préflop',desc:'Spin & Go 3-way et évolution des blindes',icon:'📊',color:'linear-gradient(135deg,#ce82ff,#a568cc)',lessons:['r_intro','r_open','r_3bet','r_pushfold','r_chk']},
+  {id:2,title:'Unité 2 · Les outs postflop',desc:'Compter ses outs et son équité',icon:'🎯',color:'linear-gradient(135deg,#ff4b4b,#d63a3a)',lessons:['o_count','o_texture','o_equity','o_chk']},
+  {id:3,title:'Unité 3 · Call/Raise postflop',desc:'Cotes du pot, value bet et bluff',icon:'🎭',color:'linear-gradient(135deg,#00b894,#059669)',lessons:['cr_potodds','cr_sizing','cr_valuebluff','cr_advanced','cr_chk']},
+  {id:4,title:'Unité 4 · Exploiter les récréatifs',desc:'Repérer et exploiter les fuites',icon:'🔍',color:'linear-gradient(135deg,#ff9600,#e08400)',lessons:['ex_leaks','ex_tells','ex_adjust','ex_chk']},
+  {id:5,title:'Unité 5 · Évaluer ses chances',desc:'Équité, lecture de mains et ICM',icon:'📈',color:'linear-gradient(135deg,#1cb0f6,#1899d6)',lessons:['eq_vsrange','eq_reading','eq_blockers','eq_icm','eq_chk']},
+  {id:6,title:'Unité 6 · Le jeu heads-up',desc:'La phase finale de tout Spin & Go',icon:'⚔️',color:'linear-gradient(135deg,#6c5ce7,#5b4bc4)',lessons:['hu_ranges','hu_postflop','hu_shortstack','hu_chk']},
+  {id:7,title:'Unité 7 · Bankroll et mental',desc:'Variance, tilt et discipline long terme',icon:'💰',color:'linear-gradient(135deg,#2f8a29,#1f5c1c)',lessons:['bm_bankroll','bm_tilt','bm_chk']},
 ];
 const LESSON_ORDER=UNITS.flatMap(u=>u.lessons);
 
@@ -1180,12 +1574,14 @@ const App=(function(){
     document.getElementById('bottomnav').classList.toggle('hidden', screen==='home'||screen==='lesson');
     document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active', el.dataset.tab===screen));
     Save.persist();
-    if(screen==='path') Path.render();
-    if(screen==='profile') Profile.render();
-    if(screen==='practice') Practice.render();
-    if(screen==='courses') Courses.render();
-    if(screen==='settings') Settings.render();
-    window.scrollTo(0,0);
+    if(screen==='path'){ Path.render(); Path.scrollToCurrent(); }
+    else {
+      if(screen==='profile') Profile.render();
+      if(screen==='practice') Practice.render();
+      if(screen==='courses') Courses.render();
+      if(screen==='settings') Settings.render();
+      window.scrollTo(0,0);
+    }
   }
   function startOrContinue(){ go('path'); }
   return {go, startOrContinue, get current(){return current;}};
@@ -1206,6 +1602,7 @@ const Path=(function(){
     const root=document.getElementById('path-content');
     root.innerHTML='';
     let globalIdx=0;
+    let currentMarked=false;
     UNITS.forEach(unit=>{
       const banner=document.createElement('div');
       banner.className='unit-banner';
@@ -1223,6 +1620,7 @@ const Path=(function(){
         row.className='node-row pos-'+(i%4);
         const nodeWrap=document.createElement('div');
         nodeWrap.className='node-wrap';
+        if(!currentMarked && unlocked && !done){ nodeWrap.id='node-current'; currentMarked=true; }
         const btn=document.createElement('button');
         btn.className='node-btn '+(lesson.checkpoint?'checkpoint ':'')+(done?'done':(unlocked?'available':'locked'));
         btn.textContent = done? '★' : (unlocked? lesson.icon : '🔒');
@@ -1247,6 +1645,15 @@ const Path=(function(){
       });
       root.appendChild(wrap);
     });
+    if(!currentMarked){
+      const allWraps=root.querySelectorAll('.node-wrap');
+      if(allWraps.length) allWraps[allWraps.length-1].id='node-current';
+    }
+  }
+  function scrollToCurrent(){
+    const el=document.getElementById('node-current');
+    if(el) el.scrollIntoView({behavior:'auto', block:'center'});
+    else window.scrollTo(0,0);
   }
   function openLessonModal(lesson){
     const overlay=document.createElement('div');
@@ -1269,7 +1676,7 @@ const Path=(function(){
     };
     overlay.onclick=(e)=>{ if(e.target===overlay) overlay.remove(); };
   }
-  return {render, openLessonModal};
+  return {render, openLessonModal, scrollToCurrent};
 })();
 
 /* =========================================================================
