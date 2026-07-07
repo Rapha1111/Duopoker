@@ -59,7 +59,6 @@ button{font-family:inherit; cursor:pointer;}
 .stat-pill .ic{font-size:20px;}
 .stat-pill.streak{color:#ff9600;}
 .stat-pill.gems{color:var(--blue);}
-.stat-pill.hearts{color:var(--red);}
 
 /* ---------- Home ---------- */
 #screen-home{
@@ -141,6 +140,20 @@ button{font-family:inherit; cursor:pointer;}
 .cards-row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:10px 0 26px;}
 .board-label{font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-light); font-weight:700; text-align:center; margin-bottom:6px;}
 .scenario-box{background:#f0f7ff; border-radius:14px; padding:16px; font-size:14px; line-height:1.6; margin-bottom:18px; color:#274b6b;}
+
+/* lesson theory slides */
+.slide-badge{display:inline-flex; align-items:center; gap:6px; background:#eef2ff; color:#4338ca; font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:.5px; padding:6px 12px; border-radius:20px; margin-bottom:14px;}
+.lesson-slide-title{font-size:23px; font-weight:900; margin-bottom:16px; line-height:1.3;}
+.lesson-slide-body{font-size:15px; line-height:1.65; color:var(--ink);}
+.lesson-slide-body p{margin:0 0 14px;}
+.lesson-slide-body ul, .lesson-slide-body ol{margin:0 0 14px; padding-left:22px;}
+.lesson-slide-body li{margin-bottom:6px;}
+.lesson-slide-body strong{color:var(--green-darker);}
+.lesson-slide-body table{width:100%; border-collapse:collapse; margin:6px 0 16px; font-size:13px;}
+.lesson-slide-body th, .lesson-slide-body td{border:1px solid var(--border); padding:8px 10px; text-align:left;}
+.lesson-slide-body th{background:#f0f7ff; font-weight:800;}
+.lesson-slide-body .formula-box{background:#fff8e0; border:2px solid var(--gold); border-radius:12px; padding:14px 16px; margin:10px 0 16px; font-weight:700; text-align:center; font-size:16px;}
+.lesson-slide-body .example-box{background:#f0fff4; border-left:4px solid var(--green); border-radius:8px; padding:12px 16px; margin:10px 0 16px;}
 
 /* playing card */
 .pcard{
@@ -264,7 +277,6 @@ h1,h2,h3{margin:0;}
   <div class="topbar">
     <div class="stat-pill streak"><span class="ic">🔥</span><span id="hd-streak">0</span></div>
     <div class="stat-pill gems"><span class="ic">💎</span><span id="hd-xp">0</span></div>
-    <div class="stat-pill hearts"><span class="ic">❤️</span><span id="hd-hearts">5</span></div>
   </div>
   <div id="path-content"></div>
 </div>
@@ -274,7 +286,6 @@ h1,h2,h3{margin:0;}
   <div class="lesson-top">
     <button class="close-x" onclick="Lesson.quit()">✕</button>
     <div class="progress-track"><div class="progress-fill" id="lesson-progress" style="width:0%"></div></div>
-    <div class="stat-pill hearts"><span class="ic">❤️</span><span id="lesson-hearts">5</span></div>
   </div>
   <div class="exercise-wrap" id="exercise-wrap"></div>
 </div>
@@ -566,8 +577,7 @@ const Sound=(function(){
     correct(){ tone(523,0.12,'sine',0); tone(784,0.16,'sine',0.1); },
     wrong(){ tone(180,0.25,'sawtooth',0,0.12); },
     click(){ tone(600,0.05,'square',0,0.06); },
-    levelup(){ tone(523,0.1,'sine',0); tone(659,0.1,'sine',0.1); tone(784,0.1,'sine',0.2); tone(1046,0.25,'sine',0.3); },
-    heartloss(){ tone(300,0.15,'triangle',0,0.1); }
+    levelup(){ tone(523,0.1,'sine',0); tone(659,0.1,'sine',0.1); tone(784,0.1,'sine',0.2); tone(1046,0.25,'sine',0.3); }
   };
 })();
 
@@ -578,7 +588,6 @@ const SAVE_KEY='pokerduo_save_v1';
 function defaultSave(){
   return {
     xp:0, streak:0, lastPlayedDate:null,
-    hearts:5, heartsMax:5, lastHeartLoss:null,
     progress:{}, // lessonId -> {stars, bestAccuracy, timesCompleted}
     skillPractice:{}, // unitId -> lastPracticedTimestamp
     badges:[],
@@ -615,6 +624,9 @@ function mkMCQ(q,choices,correctIdx,explain,extra){
 }
 function mkTF(q,correctBool,explain,extra){
   return Object.assign({kind:'mcq', q, choices:['Vrai','Faux'], correct: correctBool?0:1, explain}, extra||{});
+}
+function mkSlide(title,body){
+  return {kind:'lesson', title, body};
 }
 
 function computeEquityMC(heroHole, board, numOpp, trials){
@@ -874,26 +886,225 @@ function genEquityICM(){
   return sample(bank,8);
 }
 
+const LESSON_SLIDES = {
+  r_intro: [
+    mkSlide("Qu'est-ce qu'un Spin & Go ?", `
+      <p>Le <strong>Spin & Go</strong> est un format de tournoi ultra-rapide inventé par PokerStars (et repris depuis par la plupart des salles) : <strong>3 joueurs</strong>, une seule table, des blindes qui montent très vite (« turbo » ou « hyper-turbo »).</p>
+      <p>Avant même que les cartes soient distribuées, un <strong>multiplicateur de gain</strong> est tiré au sort au hasard (souvent x2, parfois x10 000 sur un gros coup de chance). Ce multiplicateur s'applique au buy-in pour déterminer le prize pool de la partie.</p>
+      <div class="example-box">Tapis de départ typique : <strong>500 jetons</strong>, blindes de départ <strong>10/20</strong> → soit <strong>25 big blinds (BB)</strong>. C'est un tapis « profond » par rapport aux standards du push/fold, mais il ne le reste pas longtemps.</div>
+      <p>Le format Spin & Go demande un mélange de compétences différent d'un tournoi classique (MTT) ou d'un cash game : parties très courtes, décisions rapides, et une grande partie de la partie se joue à tapis court, voire en push/fold pur.</p>
+    `),
+    mkSlide("Positions, ordre d'action et structure de gains", `
+      <p>À 3 joueurs, il n'existe que <strong>3 positions</strong> : Bouton (BTN), Petite Blind (SB), Grosse Blind (BB). Leur ordre de parole change entre le préflop et les rues suivantes — c'est une particularité du 3-max qu'il faut connaître par cœur.</p>
+      <table>
+        <tr><th>Rue</th><th>Ordre de parole</th></tr>
+        <tr><td>Préflop</td><td>BTN → SB → BB</td></tr>
+        <tr><td>Flop / Turn / River</td><td>SB → BB → BTN</td></tr>
+      </table>
+      <p>Le Bouton parle donc <strong>en premier préflop</strong> (il n'y a personne avant lui), mais il conserve son avantage positionnel car il parle <strong>en dernier à toutes les rues suivantes</strong> — c'est là que la majorité des jetons se jouent.</p>
+      <p>Conséquence stratégique de la structure de gains : comme le multiplicateur profite presque exclusivement au vainqueur, <strong>terminer 2e ou 3e rapporte quasiment la même chose (rien)</strong>. Il faut jouer pour gagner la partie, pas pour « survivre » comme dans un tournoi MTT classique à nombreux paliers de gains.</p>
+    `)
+  ],
+  r_open: [
+    mkSlide("Pourquoi une range beaucoup plus large en 3-max", `
+      <p>Plus il y a d'adversaires à une table, plus il est probable qu'au moins un d'entre eux ait une main forte. En 6-max ou 9-max, il faut donc rester sélectif en début de parole. En <strong>3-max, il n'y a que 2 adversaires</strong> : le risque de tomber sur une main dominante est bien plus faible, et il devient rentable d'ouvrir beaucoup plus large.</p>
+      <div class="example-box">À titre indicatif (approximations issues de solveurs), un tapis profond en 3-max autorise souvent l'ouverture d'environ <strong>70 à 100 % des mains au Bouton</strong> et <strong>50 à 70 % en Petite Blind</strong> — contre 15-25 % pour la première position à 9 joueurs.</p>
+      <p>Cette application utilise un score simplifié (la <strong>méthode Chen</strong>, voir plus bas) pour t'entraîner à distinguer rapidement les mains suffisamment fortes pour ouvrir dans ce contexte élargi.</p>
+    `),
+    mkSlide("La méthode Chen : évaluer une main en quelques secondes", `
+      <p>Créée par le mathématicien Bill Chen, cette méthode donne un score de 0 à 20 à n'importe quelle main de départ, en quatre étapes :</p>
+      <ol>
+        <li><strong>Valeur de la carte la plus haute :</strong> As=10, Roi=8, Dame=7, Valet=6, 10=5, puis carte/2 pour les autres (ex : 9=4.5, 6=3).</li>
+        <li><strong>Paire :</strong> on double la valeur (minimum 5). Exemple : paire de 8 → 4×2=8.</li>
+        <li><strong>Assorti (suited) :</strong> +2 points.</li>
+        <li><strong>Écart entre les deux cartes (gap) :</strong> 0 carte manquante = 0 point ; 1 carte manquante = -1 ; 2 cartes = -2 ; 3 cartes = -4 ; 4 cartes ou plus = -5. Bonus de +1 si l'écart est de 0 ou 1 <em>et</em> que les deux cartes sont Dame ou moins (bon potentiel de quinte).</li>
+      </ol>
+      <div class="example-box">
+        <strong>Exemple avec A♠ J♠ :</strong><br>
+        As = 10 points · Assorti = +2 · Écart (Dame et Roi manquants entre le Valet et l'As) = 2 → -2.<br>
+        <strong>Score final = 10 + 2 − 2 = 10/20.</strong> C'est une main très forte, à ouvrir dans toutes les positions.
+      </div>
+      <table>
+        <tr><th>Score Chen</th><th>Interprétation</th></tr>
+        <tr><td>9 et +</td><td>Main premium, à jouer partout</td></tr>
+        <tr><td>7 - 8</td><td>Main forte</td></tr>
+        <tr><td>4 - 6</td><td>Jouable en position tardive / 3-max large</td></tr>
+        <tr><td>Moins de 4</td><td>Généralement à coucher</td></tr>
+      </table>
+      <p>Ce n'est qu'une <strong>approximation</strong> (elle ignore par exemple les dynamiques multi-way), mais c'est un excellent réflexe pour prendre des décisions rapides — indispensable en format turbo.</p>
+    `)
+  ],
+  r_pushfold: [
+    mkSlide("Pourquoi le push/fold à tapis court", `
+      <p>Quand ton tapis descend sous environ <strong>15 grosses blindes (BB)</strong>, relancer d'un montant « normal » (2,5x par exemple) pose un problème : tu engages déjà une grosse partie de ton tapis sans pouvoir répondre correctement à une re-relance, et tu perds ta capacité à protéger ta main sur les rues suivantes.</p>
+      <p>La solution théorique (validée par des solveurs comme les tables de <strong>Nash push/fold</strong>) est de simplifier radicalement la décision préflop à deux options : <strong>tout le tapis (push)</strong> ou <strong>se coucher (fold)</strong>. Cela maximise ta fold equity (l'adversaire doit risquer tout son tapis pour te contester) et élimine les erreurs post-flop à tapis court.</p>
+      <div class="example-box">Cette application utilise un seuil simplifié inspiré de cette logique : plus ton tapis est court, plus le score Chen minimum pour pousser (ou payer un push) diminue — donc plus ta range s'élargit.</div>
+    `),
+    mkSlide("Comment le seuil évolue selon le tapis et la position", `
+      <p>Deux facteurs élargissent ta range de push/fold : un <strong>tapis plus court</strong> (moins à perdre, plus de fold equity nécessaire) et une <strong>position plus tardive</strong> (moins d'adversaires à traverser).</p>
+      <table>
+        <tr><th>Tapis</th><th>Bouton (BTN)</th><th>Petite Blind (SB)</th><th>Grosse Blind (BB, en call)</th></tr>
+        <tr><td>20 BB</td><td>≈ 8</td><td>≈ 9</td><td>≈ 10</td></tr>
+        <tr><td>13 BB</td><td>≈ 5.9</td><td>≈ 6.9</td><td>≈ 7.9</td></tr>
+        <tr><td>8 BB</td><td>≈ 4.4</td><td>≈ 5.4</td><td>≈ 6.4</td></tr>
+        <tr><td>4 BB</td><td>≈ 3.2</td><td>≈ 4.2</td><td>≈ 5.2</td></tr>
+      </table>
+      <p>(Valeurs simplifiées données en score Chen — à retenir comme des ordres de grandeur pédagogiques, pas comme une table Nash exacte.)</p>
+      <p>Point clé pour un joueur semi-pro : à 4-6 BB, on pousse des mains qui semblent très faibles en cash game (par ex. une carte moyenne assortie), simplement parce que le coût de l'inaction (payer les blindes sans agir) devient supérieur au risque de pousser.</p>
+    `)
+  ],
+  o_count: [
+    mkSlide("Qu'est-ce qu'un « out » ?", `
+      <p>Un <strong>out</strong> est une carte encore présente dans le jeu qui, si elle tombe, transforme ta main en la meilleure main (ou en une main que tu juges suffisamment forte pour gagner). Compter ses outs est la première étape pour calculer son équité sur un tirage.</p>
+      <p>Règle de base : à partir de 2 cartes en main + le board, il reste toujours <strong>52 − (nombre de cartes visibles)</strong> cartes inconnues. Parmi elles, seules certaines complètent ta main : ce sont tes outs.</p>
+    `),
+    mkSlide("Le tableau des tirages classiques à connaître par cœur", `
+      <table>
+        <tr><th>Tirage</th><th>Outs</th></tr>
+        <tr><td>Couleur (4 cartes de la même enseigne)</td><td>9</td></tr>
+        <tr><td>Quinte ouverte des deux côtés (OESD)</td><td>8</td></tr>
+        <tr><td>Quinte « ventre » (gutshot, une carte manquante au milieu)</td><td>4</td></tr>
+        <tr><td>Deux overcards (par ex. AK sur un board bas)</td><td>6</td></tr>
+        <tr><td>Brelan (set) qui cherche le carré</td><td>1</td></tr>
+        <tr><td>Deux paires qui cherchent le full</td><td>4</td></tr>
+        <tr><td>Couleur + quinte combinées (tirage combiné)</td><td>15</td></tr>
+      </table>
+      <p><strong>Attention aux doublons :</strong> si tu as à la fois un tirage couleur et un tirage quinte, certaines cartes peuvent compter pour les deux (ne compte jamais deux fois la même carte). Attention aussi aux <strong>outs « sales »</strong> : une carte qui te donne une quinte mais qui donne aussi une couleur à l'adversaire ne doit être comptée qu'à moitié dans ta tête.</p>
+    `)
+  ],
+  o_equity: [
+    mkSlide("La règle du 2 et du 4 : d'où vient cette astuce", `
+      <p>Calculer une probabilité exacte à la table est trop lent. La <strong>règle du 2 et du 4</strong> donne une excellente approximation instantanée :</p>
+      <div class="formula-box">Équité ≈ (nombre d'outs) × 4 &nbsp;si 2 cartes restent à venir (après le flop)<br>Équité ≈ (nombre d'outs) × 2 &nbsp;si 1 seule carte reste à venir (après le turn)</div>
+      <p>D'où ça vient ? Après le flop, il reste 47 cartes inconnues et 2 tirages (turn + river). La probabilité exacte de toucher au moins un out sur ces 2 cartes est d'environ <em>outs/47 + outs/46</em>, ce qui est très proche de <em>outs × 4 / 100</em> pour un nombre d'outs raisonnable (jusqu'à 12-14).</p>
+      <div class="example-box">Exemple : 9 outs (tirage couleur) après le flop → 9 × 4 = <strong>36 % d'équité</strong> environ pour compléter la couleur d'ici la river (la vraie valeur est ≈35 %, l'approximation est excellente).</div>
+    `),
+    mkSlide("Les limites de la règle, et comment la corriger", `
+      <p>La règle du 4 devient <strong>optimiste</strong> (surestime l'équité) au-delà de 12-13 outs. Correction simple utilisée par beaucoup de joueurs semi-pros : <strong>soustrais 1 point par tranche de 8 outs au-delà de 8</strong>.</p>
+      <div class="example-box">15 outs (tirage combiné couleur + quinte) après le flop → 15 × 4 = 60, moins ≈1 point de correction → environ <strong>57-58 % d'équité</strong> réelle (contre 60% donné brut par la règle).</div>
+      <p>Autre nuance essentielle : ces règles donnent ton équité <strong>« brute »</strong> à améliorer ta main, mais pas forcément ton équité <strong>réelle de gagner le coup</strong> (l'adversaire peut aussi improve, ou tu peux déjà être devant sans le savoir). C'est un outil de décision rapide, pas une vérité absolue — combine-le toujours avec la lecture de la range adverse (unité 5).</p>
+    `)
+  ],
+  cr_potodds: [
+    mkSlide("La formule des cotes du pot, expliquée pas à pas", `
+      <p>Quand un adversaire mise, tu dois décider si suivre (call) est rentable à long terme. La question à te poser : <strong>« quelle équité minimale ai-je besoin pour que ce call soit profitable ? »</strong></p>
+      <div class="formula-box">Équité requise = Mise à payer / (Pot avant la mise + Mise adverse + Mise adverse)</div>
+      <div class="example-box">
+        Exemple : le pot est de 100, l'adversaire mise 50.<br>
+        Si tu suis, le pot final sera 100 (pot initial) + 50 (sa mise) + 50 (ton call) = <strong>200</strong>.<br>
+        Tu risques 50 pour en gagner 200 → équité requise = 50 / 200 = <strong>25 %</strong>.<br>
+        Si ton équité réelle (calculée avec la règle du 2/4, ou lue sur la range adverse) est supérieure à 25 %, le call est rentable.
+      </div>
+      <p>Plus la mise adverse est grosse par rapport au pot, plus l'équité requise augmente : une mise « pot-size » (100 % du pot) demande environ 33 % d'équité, une mise de 50 % du pot demande environ 20 %.</p>
+    `),
+    mkSlide("Cotes implicites : voir plus loin que le coup en cours", `
+      <p>Les cotes du pot ne racontent qu'une partie de l'histoire. Les <strong>cotes implicites</strong> (implied odds) tiennent compte de l'argent que tu pourras <em>encore gagner</em> sur les rues suivantes si tu touches ta main.</p>
+      <p>Avec un tirage et une équité légèrement insuffisante « sur le papier », un call peut rester rentable si l'adversaire a un tapis profond et est du genre à repayer une grosse mise quand tu touches ta carte.</p>
+      <p>À l'inverse, méfie-toi des <strong>cotes inversées</strong> (reverse implied odds) : avec une main moyenne (par ex. une petite paire) face à un adversaire agressif, même si tu touches un brelan, tu risques de perdre encore plus de jetons contre une main supérieure. En format Spin à tapis parfois court, les cotes implicites sont souvent limitées : reste prudent avec ce raisonnement quand les stacks sont peu profonds.</p>
+    `)
+  ],
+  cr_valuebluff: [
+    mkSlide("Value bet : faire payer le maximum à une main plus faible", `
+      <p>Une <strong>value bet</strong> est une mise faite en pensant avoir la meilleure main, avec l'intention que l'adversaire suive avec une main plus faible. L'objectif : maximiser le nombre de jetons extraits sans le faire fuir.</p>
+      <p>Principe de sizing : plus l'adversaire est du genre à payer large (calling station, voir unité 4), plus tu peux miser gros. Face à un joueur plus solide, une taille modérée (50-75 % du pot) reste souvent optimale pour continuer à te faire payer par ses mains moyennes.</p>
+      <p>La <strong>value bet fine</strong> (thin value) consiste à miser avec une main seulement moyennement forte (par ex. une paire moyenne), en espérant être payé par quelque chose de pire. C'est risqué mais très rentable contre les joueurs qui paient trop large — exactement le profil du joueur récréatif typique.</p>
+    `),
+    mkSlide("Bluff et c-bet : la théorie des ranges polarisées", `
+      <p>Un <strong>bluff</strong> n'a de sens que si l'adversaire peut se coucher. Une bonne range de mise mélange généralement des mains fortes (value) et des mains faibles (bluffs), en évitant les mains « moyennes » qui n'apportent ni l'un ni l'autre — c'est ce qu'on appelle une <strong>range polarisée</strong>.</p>
+      <p>La <strong>continuation bet (c-bet)</strong> — la mise de l'agresseur préflop sur le flop — fonctionne mieux sur un <strong>board sec</strong> (peu de tirages, cartes déconnectées) où l'adversaire a rarement touché quelque chose, et perd en fiabilité en multi-way (2 adversaires ou plus), car la probabilité qu'au moins un ait touché le board augmente.</p>
+      <div class="example-box">Bon réflexe pour un joueur semi-pro : sur un board très humide (ex: 8♥9♥10♠, plein de tirages), préfère un sizing plus généreux (ou un check avec les mains moyennes) plutôt qu'un petit bluff systématique — trop de mains adverses ont un morceau du board.</div>
+    `)
+  ],
+  ex_leaks: [
+    mkSlide("La typologie des joueurs : le carré loose/tight × passif/agressif", `
+      <p>Le moyen le plus rapide de catégoriser un adversaire repose sur deux axes : combien de mains il joue (<strong>loose</strong> = large vs <strong>tight</strong> = serré), et comment il les joue (<strong>passif</strong> = check/call vs <strong>agressif</strong> = bet/raise).</p>
+      <table>
+        <tr><th>Profil</th><th>Comportement typique</th></tr>
+        <tr><td>Loose-passif (« fish »)</td><td>Joue trop de mains, suit beaucoup, relance peu, bluffe rarement — le profil récréatif le plus fréquent</td></tr>
+        <tr><td>Loose-agressif (« maniaque »)</td><td>Joue large ET relance/bluffe beaucoup — dangereux mais exploitable en le laissant se pendre</td></tr>
+        <tr><td>Tight-passif</td><td>Ne joue que de bonnes mains mais sans les valoriser pleinement — facile à faire coucher sur les mises importantes</td></tr>
+        <tr><td>Tight-agressif (« reg » / TAG)</td><td>Sélectif et agressif — le profil régulier solide à respecter</td></tr>
+      </table>
+      <p>En Spin & Go, le joueur récréatif est très majoritairement <strong>loose-passif</strong> : c'est la cible prioritaire de ton plan de jeu.</p>
+    `),
+    mkSlide("Les fuites classiques d'un joueur récréatif en Spin & Go", `
+      <ul>
+        <li><strong>Trop de mains jouées préflop</strong>, y compris des mains faibles qu'il n'aurait pas dû défendre.</li>
+        <li><strong>Limpe</strong> souvent au lieu de relancer, même quand une relance serait clairement supérieure.</li>
+        <li><strong>Bluffe très peu</strong> : une grosse mise de sa part signale presque toujours une main réellement forte.</li>
+        <li><strong>Surestime les paires moyennes</strong> et le top pair à mauvais kicker, et paie trop large avec ces mains.</li>
+        <li><strong>Ne resserre pas ses ranges</strong> quand les blindes montent, alors que le format Spin l'exige de plus en plus.</li>
+        <li><strong>Tilt after bad beat</strong> : joue plus mal juste après avoir perdu un gros coup.</li>
+      </ul>
+      <p>Repérer ces fuites en 10-15 mains suffit généralement à construire un plan d'exploitation efficace pour le reste de la partie (unité suivante).</p>
+    `)
+  ],
+  ex_adjust: [
+    mkSlide("Le principe d'exploitation : le miroir inversé des fuites", `
+      <p>Exploiter un adversaire, c'est simplement <strong>répondre à chaque fuite identifiée par son ajustement inverse</strong>. C'est le principe central du poker exploitant (par opposition au poker « GTO » qui ignore le profil adverse).</p>
+      <table>
+        <tr><th>Fuite observée</th><th>Ajustement correct</th></tr>
+        <tr><td>Paie presque tout (calling station)</td><td>Value bet plus large et plus gros ; ne bluffe presque jamais</td></tr>
+        <tr><td>Se couche trop face à l'agression</td><td>Bluffe et relance plus fréquemment contre lui spécifiquement</td></tr>
+        <tr><td>Limpe souvent</td><td>Relance sur son limp (iso-raise) pour l'isoler en tête-à-tête</td></tr>
+        <tr><td>Ne bluffe presque jamais</td><td>Donne-lui plus de crédit : couche-toi plus facilement face à ses grosses mises</td></tr>
+      </table>
+      <p>Un joueur semi-pro ajuste en permanence, main après main, plutôt que d'appliquer une stratégie figée.</p>
+    `),
+    mkSlide("Prioriser sa pression en 3-way", `
+      <p>En 3-way, tu affrontes rarement deux profils identiques. Le cas le plus fréquent : <strong>un joueur récréatif loose-passif et un joueur régulier plus solide (reg)</strong>.</p>
+      <p>Règle d'or : <strong>construis la majorité de tes pots contre le joueur le plus faible</strong>, et évite les confrontations marginales (bluffs, calls limites) contre le joueur le plus solide, qui punira davantage tes erreurs.</p>
+      <div class="example-box">Concrètement : élargis tes ranges d'ouverture et d'isolation quand le récréatif est encore dans le coup ; resserre-toi et reste plus « équilibré » quand seul le reg est impliqué.</div>
+      <p>Ce principe reste valable même quand la partie devient heads-up après une élimination : réévalue alors immédiatement le profil de ton unique adversaire restant.</p>
+    `)
+  ],
+  eq_vsrange: [
+    mkSlide("Équité main contre main, et main contre range", `
+      <p>L'<strong>équité</strong> est la probabilité de remporter le pot, compte tenu de ta main, du board, et des mains possibles de tes adversaires. On distingue :</p>
+      <ul>
+        <li><strong>Équité main contre main</strong> : face à une main précise connue (rare en pratique, sauf à l'abattage).</li>
+        <li><strong>Équité main contre range</strong> : face à l'ensemble des mains compatibles avec les actions de l'adversaire — c'est ce que fait un joueur expérimenté à chaque décision.</li>
+      </ul>
+      <p>En 3-way, ton équité doit tenir compte de <strong>plusieurs adversaires simultanément</strong> : tu dois battre la meilleure main parmi eux, pas une seule main isolée. Mécaniquement, ton équité baisse quand le nombre d'adversaires encore dans le coup augmente.</p>
+    `),
+    mkSlide("La méthode Monte Carlo (celle utilisée par cette appli)", `
+      <p>Calculer une équité exacte à la main est complexe dès qu'il y a plusieurs adversaires. La méthode <strong>Monte Carlo</strong> contourne le problème en <strong>simulant des centaines de mains aléatoires</strong> compatibles avec les cartes visibles, et en comptant simplement la fréquence de victoire.</p>
+      <div class="example-box">C'est exactement ce que fait le simulateur d'équité de cette application dans la leçon suivante : il tire des mains adverses aléatoires, complète le board aléatoirement, et calcule le pourcentage de mains où tu gagnes — répété une centaine de fois pour converger vers une estimation fiable.</div>
+      <p>À la table, tu ne peux évidemment pas lancer une simulation — mais l'entraînement répété sur des exemples te permettra de développer une <strong>intuition rapide</strong> de ton équité approximative, affinée par la lecture de la range adverse (ses actions, sa position, son profil de joueur).</p>
+    `)
+  ],
+  eq_icm: [
+    mkSlide("ICM : pourquoi un jeton ne vaut pas toujours le même argent", `
+      <p>Le <strong>chip EV</strong> (espérance de gain en jetons) suppose que chaque jeton a la même valeur. Mais en tournoi, ce n'est pas vrai : perdre tous tes jetons t'élimine (0€ de plus), alors que les gagner ne fait qu'augmenter tes chances de gains déjà obtenus. La théorie de l'<strong>ICM</strong> (Independent Chip Model) convertit un tapis de jetons en <strong>valeur monétaire réelle ($EV)</strong>, compte tenu de la structure des gains.</p>
+      <p>Conséquence classique en tournoi MTT : près d'un palier de gains important, il vaut souvent mieux éviter un coup à équité limite (« -EV en $ même si +EV en jetons ») plutôt que de risquer l'élimination.</p>
+    `),
+    mkSlide("ICM en Spin & Go : un cas particulier important", `
+      <p>Les Spin & Go ont une structure de gains <strong>très concentrée sur la 1ère place</strong> (souvent quasi « winner takes all », le multiplicateur profitant presque exclusivement au vainqueur). Cela change la donne par rapport à un MTT classique à nombreux paliers de gains :</p>
+      <div class="formula-box">Une 2e place ne rapportant presque rien, la prudence ICM classique est beaucoup moins pertinente ici : il vaut généralement mieux jouer proche du chip EV pur (maximiser tes jetons) plutôt que de « jouer petit bras » pour sécuriser une place qui ne paie presque pas.</div>
+      <p>Nuance importante : dès qu'un joueur est éliminé, la partie devient un <strong>heads-up classique</strong> avec la même structure de blindes qui continue de progresser — tes compétences heads-up (ranges, agressivité) deviennent alors immédiatement déterminantes pour transformer ta 2e place potentielle en victoire.</p>
+    `)
+  ]
+};
 const LESSONS = {
-  r_intro:{id:'r_intro',unit:1,title:'Le format Spin & Go',icon:'🎰',desc:'3-way, blindes progressives et positions',gen:genRangesIntro},
-  r_open:{id:'r_open',unit:1,title:'Ranges d\'ouverture 3-max',icon:'📊',desc:'Quelles mains ouvrir, tapis profond',gen:genRangesOpen},
-  r_pushfold:{id:'r_pushfold',unit:1,title:'Push/fold à tapis court',icon:'🚀',desc:'Quand les blindes montent',gen:genRangesPushfold},
+  r_intro:{id:'r_intro',unit:1,title:'Le format Spin & Go',icon:'🎰',desc:'3-way, blindes progressives et positions',gen:genRangesIntro,slides:LESSON_SLIDES.r_intro},
+  r_open:{id:'r_open',unit:1,title:'Ranges d\'ouverture 3-max',icon:'📊',desc:'Quelles mains ouvrir, tapis profond',gen:genRangesOpen,slides:LESSON_SLIDES.r_open},
+  r_pushfold:{id:'r_pushfold',unit:1,title:'Push/fold à tapis court',icon:'🚀',desc:'Quand les blindes montent',gen:genRangesPushfold,slides:LESSON_SLIDES.r_pushfold},
   r_chk:{id:'r_chk',unit:1,checkpoint:true,title:'Révision : Ranges préflop',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genRangesIntro(),...genRangesOpen(),...genRangesPushfold()],12)},
 
-  o_count:{id:'o_count',unit:2,title:'Compter ses outs',icon:'🎯',desc:'Tirages de couleur, quinte, brelan...',gen:genOutsCount},
-  o_equity:{id:'o_equity',unit:2,title:'Règle du 2 et du 4',icon:'✖️',desc:'Convertir ses outs en équité',gen:genOutsEquity},
+  o_count:{id:'o_count',unit:2,title:'Compter ses outs',icon:'🎯',desc:'Tirages de couleur, quinte, brelan...',gen:genOutsCount,slides:LESSON_SLIDES.o_count},
+  o_equity:{id:'o_equity',unit:2,title:'Règle du 2 et du 4',icon:'✖️',desc:'Convertir ses outs en équité',gen:genOutsEquity,slides:LESSON_SLIDES.o_equity},
   o_chk:{id:'o_chk',unit:2,checkpoint:true,title:'Révision : Outs postflop',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genOutsCount(),...genOutsEquity()],12)},
 
-  cr_potodds:{id:'cr_potodds',unit:3,title:'Cotes du pot',icon:'🧮',desc:'Suivre ou se coucher',gen:genPotOdds},
-  cr_valuebluff:{id:'cr_valuebluff',unit:3,title:'Value bet, bluff, relance',icon:'🎭',desc:'Miser pour valeur ou bluffer',gen:genValueBluff},
+  cr_potodds:{id:'cr_potodds',unit:3,title:'Cotes du pot',icon:'🧮',desc:'Suivre ou se coucher',gen:genPotOdds,slides:LESSON_SLIDES.cr_potodds},
+  cr_valuebluff:{id:'cr_valuebluff',unit:3,title:'Value bet, bluff, relance',icon:'🎭',desc:'Miser pour valeur ou bluffer',gen:genValueBluff,slides:LESSON_SLIDES.cr_valuebluff},
   cr_chk:{id:'cr_chk',unit:3,checkpoint:true,title:'Révision : Call/Raise postflop',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genPotOdds(),...genValueBluff()],12)},
 
-  ex_leaks:{id:'ex_leaks',unit:4,title:'Repérer les fuites',icon:'🔍',desc:'Les défauts des joueurs récréatifs',gen:genExploitLeaks},
-  ex_adjust:{id:'ex_adjust',unit:4,title:'Ajustements exploitants',icon:'🧩',desc:'Comment les faire payer',gen:genExploitAdjust},
+  ex_leaks:{id:'ex_leaks',unit:4,title:'Repérer les fuites',icon:'🔍',desc:'Les défauts des joueurs récréatifs',gen:genExploitLeaks,slides:LESSON_SLIDES.ex_leaks},
+  ex_adjust:{id:'ex_adjust',unit:4,title:'Ajustements exploitants',icon:'🧩',desc:'Comment les faire payer',gen:genExploitAdjust,slides:LESSON_SLIDES.ex_adjust},
   ex_chk:{id:'ex_chk',unit:4,checkpoint:true,title:'Révision : Exploiter les recs',icon:'⭐',desc:'Teste tes acquis',gen:()=>sample([...genExploitLeaks(),...genExploitAdjust()],12)},
 
-  eq_vsrange:{id:'eq_vsrange',unit:5,title:'Équité vs adversaires',icon:'📈',desc:'Estimer tes chances de gagner',gen:genEquityVsRange},
-  eq_icm:{id:'eq_icm',unit:5,title:'ICM et décisions 3-way',icon:'🏆',desc:'La structure de gains du Spin',gen:genEquityICM},
+  eq_vsrange:{id:'eq_vsrange',unit:5,title:'Équité vs adversaires',icon:'📈',desc:'Estimer tes chances de gagner',gen:genEquityVsRange,slides:LESSON_SLIDES.eq_vsrange},
+  eq_icm:{id:'eq_icm',unit:5,title:'ICM et décisions 3-way',icon:'🏆',desc:'La structure de gains du Spin',gen:genEquityICM,slides:LESSON_SLIDES.eq_icm},
   eq_chk:{id:'eq_chk',unit:5,checkpoint:true,title:'Révision finale',icon:'🏆',desc:'Le grand test final !',gen:()=>sample([...genEquityVsRange(),...genEquityICM()],12)},
 };
 const UNITS=[
@@ -931,7 +1142,7 @@ function checkBadges(){
 }
 
 /* =========================================================================
-   XP / LEVEL / STREAK / HEARTS
+   XP / LEVEL / STREAK
    ========================================================================= */
 function xpForLevel(lvl){ return lvl*100; }
 function levelFromXp(xp){ return 1+Math.floor(xp/100); }
@@ -958,23 +1169,6 @@ function updateStreak(){
   }
   s.lastPlayedDate=today;
 }
-function refillHearts(){
-  const s=Save.data;
-  if(s.hearts>=s.heartsMax) return;
-  if(!s.lastHeartLoss) { s.hearts=s.heartsMax; return; }
-  const elapsedHrs=(Date.now()-s.lastHeartLoss)/3600000;
-  const gained=Math.floor(elapsedHrs/4);
-  if(gained>0){
-    s.hearts=Math.min(s.heartsMax, s.hearts+gained);
-    s.lastHeartLoss=s.hearts>=s.heartsMax? null : Date.now()-((elapsedHrs%4)*3600000);
-  }
-}
-function loseHeart(){
-  const s=Save.data;
-  s.hearts=Math.max(0,s.hearts-1);
-  if(!s.lastHeartLoss) s.lastHeartLoss=Date.now();
-  Save.persist();
-}
 
 /* =========================================================================
    APP / ROUTER
@@ -988,7 +1182,7 @@ const App=(function(){
     document.getElementById('screen-'+screen).classList.remove('hidden');
     document.getElementById('bottomnav').classList.toggle('hidden', screen==='home'||screen==='lesson');
     document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active', el.dataset.tab===screen));
-    refillHearts(); Save.persist();
+    Save.persist();
     if(screen==='path') Path.render();
     if(screen==='profile') Profile.render();
     if(screen==='daily') Daily.render();
@@ -1012,7 +1206,6 @@ const Path=(function(){
   function render(){
     document.getElementById('hd-streak').textContent=Save.data.streak;
     document.getElementById('hd-xp').textContent=Save.data.xp;
-    document.getElementById('hd-hearts').textContent=Save.data.hearts;
     const root=document.getElementById('path-content');
     root.innerHTML='';
     let globalIdx=0;
@@ -1075,9 +1268,6 @@ const Path=(function(){
     overlay.querySelector('#modal-cancel').onclick=()=>overlay.remove();
     overlay.querySelector('#modal-start').onclick=()=>{
       overlay.remove();
-      if(Save.data.hearts<=0){
-        alert("Tu n'as plus de cœurs ! Attends qu'ils se régénèrent (1 toutes les 4h) ou continue quand même en pratique libre.");
-      }
       Lesson.start(lesson);
     };
     overlay.onclick=(e)=>{ if(e.target===overlay) overlay.remove(); };
@@ -1089,11 +1279,11 @@ const Path=(function(){
    LESSON ENGINE
    ========================================================================= */
 const Lesson=(function(){
-  let queue=[], idx=0, correctCount=0, currentLesson=null, answered=false, selectedIdx=null;
+  let queue=[], idx=0, correctCount=0, currentLesson=null, answered=false, selectedIdx=null, xpEarned=0;
   function start(lesson){
     currentLesson=lesson;
-    queue=lesson.gen();
-    idx=0; correctCount=0;
+    queue=[...(lesson.slides||[]), ...lesson.gen()];
+    idx=0; correctCount=0; xpEarned=0;
     App.go('lesson');
     renderExercise();
   }
@@ -1110,7 +1300,6 @@ const Lesson=(function(){
   }
   function updateHud(){
     document.getElementById('lesson-progress').style.width=Math.round((idx/queue.length)*100)+'%';
-    document.getElementById('lesson-hearts').textContent=Save.data.hearts;
   }
   function renderExercise(){
     answered=false; selectedIdx=null;
@@ -1118,6 +1307,7 @@ const Lesson=(function(){
     const wrap=document.getElementById('exercise-wrap');
     wrap.innerHTML='';
     const ex=queue[idx];
+    if(ex.kind==='lesson'){ renderSlide(ex); return; }
     const qEl=document.createElement('div');
     qEl.className='exercise-q';
     qEl.textContent=ex.q;
@@ -1170,6 +1360,27 @@ const Lesson=(function(){
     document.body.appendChild(footer);
     document.getElementById('btn-check').onclick=submitAnswer;
   }
+  function renderSlide(ex){
+    const wrap=document.getElementById('exercise-wrap');
+    wrap.innerHTML=`
+      <div class="slide-badge">📖 Cours</div>
+      <div class="lesson-slide-title">${ex.title}</div>
+      <div class="lesson-slide-body">${ex.body}</div>
+    `;
+    let footer=document.getElementById('check-footer-el');
+    if(footer) footer.remove();
+    footer=document.createElement('div');
+    footer.className='check-footer';
+    footer.id='check-footer-el';
+    footer.innerHTML=`<div class="check-footer-inner"><button class="btn btn-blue btn-block" id="btn-slide-next">J'ai compris, continuer</button></div>`;
+    document.body.appendChild(footer);
+    document.getElementById('btn-slide-next').onclick=()=>{
+      xpEarned+=5; Save.data.xp+=5; Save.persist();
+      footer.remove();
+      idx++;
+      if(idx>=queue.length) finishLesson(); else renderExercise();
+    };
+  }
   function selectChoice(i){
     if(answered) return;
     selectedIdx=i;
@@ -1186,10 +1397,9 @@ const Lesson=(function(){
       if(i===ex.correct) b.classList.add('correct');
       else if(i===selectedIdx && !isCorrect) b.classList.add('wrong');
     });
-    if(isCorrect){ correctCount++; Sound.correct(); Save.data.xp+=10; }
-    else { Sound.wrong(); loseHeart(); Sound.heartloss(); }
+    if(isCorrect){ correctCount++; xpEarned+=10; Save.data.xp+=10; Sound.correct(); }
+    else { Sound.wrong(); }
     Save.persist();
-    document.getElementById('lesson-hearts').textContent=Save.data.hearts;
 
     const oldFeedback=document.getElementById('feedback-el');
     if(oldFeedback) oldFeedback.remove();
@@ -1208,10 +1418,6 @@ const Lesson=(function(){
     `;
     document.body.appendChild(fb);
     document.getElementById('btn-continue-ex').onclick=nextExercise;
-
-    if(Save.data.hearts<=0){
-      document.getElementById('btn-continue-ex').onclick=()=>{ fb.remove(); failLesson(); };
-    }
   }
   function nextExercise(){
     document.getElementById('feedback-el').remove();
@@ -1219,25 +1425,11 @@ const Lesson=(function(){
     if(idx>=queue.length){ finishLesson(); }
     else renderExercise();
   }
-  function failLesson(){
-    const overlay=document.createElement('div');
-    overlay.className='modal-overlay';
-    overlay.innerHTML=`<div class="modal-box">
-      <div style="font-size:50px;">💔</div>
-      <h3>Plus de cœurs !</h3>
-      <p>Tu n'as plus de cœurs pour continuer cette leçon. Reviens plus tard ou continue en pratique libre.</p>
-      <div class="modal-actions">
-        <button class="btn btn-blue btn-block" id="fail-continue">Continuer quand même</button>
-        <button class="btn btn-outline btn-block" id="fail-quit">Retour au parcours</button>
-      </div>
-    </div>`;
-    document.getElementById('modal-root').appendChild(overlay);
-    overlay.querySelector('#fail-continue').onclick=()=>{ overlay.remove(); nextExercise(); };
-    overlay.querySelector('#fail-quit').onclick=()=>{ overlay.remove(); App.go('path'); };
-  }
   function finishLesson(){
     const footer=document.getElementById('check-footer-el'); if(footer) footer.remove();
-    const accuracy=Math.round((correctCount/queue.length)*100);
+    const quizItems=queue.filter(e=>e.kind!=='lesson');
+    const quizTotal=quizItems.length;
+    const accuracy=quizTotal? Math.round((correctCount/quizTotal)*100) : 100;
     const stars = accuracy===100?3: accuracy>=80?2:1;
     const isNew=!Save.data.progress[currentLesson.id];
     const prevStars = Save.data.progress[currentLesson.id]?Save.data.progress[currentLesson.id].stars:0;
@@ -1249,15 +1441,16 @@ const Lesson=(function(){
     Save.data.skillPractice[currentLesson.unit]=Date.now();
     let bonusXp=0;
     if(isNew) bonusXp+=20;
-    if(accuracy===100) bonusXp+=15;
+    if(quizTotal && accuracy===100) bonusXp+=15;
     Save.data.xp+=bonusXp;
-    const prevLevel=levelFromXp(Save.data.xp-10*correctCount-bonusXp);
+    xpEarned+=bonusXp;
+    const prevLevel=levelFromXp(Save.data.xp-xpEarned);
     const newLevel=levelFromXp(Save.data.xp);
     updateStreak();
     const newBadges=checkBadges();
     Save.persist();
     App.go('result');
-    renderResult({accuracy, correctCount, total:queue.length, bonusXp, leveledUp:newLevel>prevLevel, newLevel, newBadges, stars});
+    renderResult({accuracy, correctCount, quizTotal, xpEarned, leveledUp:newLevel>prevLevel, newLevel, newBadges, stars});
   }
   function renderResult(r){
     const c=document.getElementById('result-content');
@@ -1270,9 +1463,9 @@ const Lesson=(function(){
         <div style="font-size:20px;margin-bottom:10px;">${'⭐'.repeat(r.stars)}${'☆'.repeat(3-r.stars)}</div>
       </div>
       <div class="result-stats">
-        <div class="result-stat"><div class="val">${r.correctCount}/${r.total}</div><div class="lbl">Correct</div></div>
+        <div class="result-stat"><div class="val">${r.correctCount}/${r.quizTotal}</div><div class="lbl">Correct</div></div>
         <div class="result-stat"><div class="val">${r.accuracy}%</div><div class="lbl">Précision</div></div>
-        <div class="result-stat"><div class="val">+${r.correctCount*10+r.bonusXp}</div><div class="lbl">XP gagné</div></div>
+        <div class="result-stat"><div class="val">+${r.xpEarned}</div><div class="lbl">XP gagné</div></div>
       </div>
       ${r.leveledUp?`<div class="scenario-box center" style="background:#fff8e0;color:#8a6d00;font-weight:800;">🎊 Niveau ${r.newLevel} atteint !</div>`:''}
       ${r.newBadges.length?`<div class="scenario-box center" style="background:#fff8e0;color:#8a6d00;">Nouveau badge débloqué : ${r.newBadges.map(b=>b.icon+' '+b.name).join(', ')}</div>`:''}
@@ -1800,7 +1993,6 @@ const Settings=(function(){
    INIT
    ========================================================================= */
 window.addEventListener('load',()=>{
-  refillHearts();
   Save.persist();
   App.go('home');
 });
