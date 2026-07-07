@@ -215,16 +215,60 @@ button{font-family:inherit; cursor:pointer;}
 .strength-fill{height:100%; border-radius:6px;}
 
 /* ---------- Daily / Simulator ---------- */
-#screen-practice, #screen-courses{max-width:640px; margin:0 auto; padding:20px 20px 110px;}
+#screen-practice{max-width:640px; margin:0 auto; padding:0 0 130px;}
+#screen-courses{max-width:640px; margin:0 auto; padding:20px 20px 110px;}
 .card-title-row{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
 .card-title-row h2{margin:0; font-size:22px;}
-.table-felt{background:radial-gradient(ellipse at center,var(--felt) 0%,var(--felt-dark) 100%); border-radius:24px; padding:26px 16px; color:#fff; text-align:center; margin-bottom:18px;}
-.pot-display{font-size:14px; opacity:.85; margin-bottom:10px; font-weight:700;}
-.hero-label{font-size:12px; text-transform:uppercase; opacity:.8; margin-top:14px; letter-spacing:1px;}
-.sim-actions{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:16px;}
-.sim-log{background:#fff; border:2px solid var(--border); border-radius:12px; padding:12px 14px; font-size:13px; max-height:140px; overflow-y:auto; margin-top:14px; color:var(--ink-light);}
-.sim-log div{margin-bottom:4px;}
-.chip-stat{display:flex; justify-content:space-between; background:#fff; border:2px solid var(--border); border-radius:12px; padding:12px 16px; margin-bottom:14px; font-weight:800;}
+#practice-content{padding:0 16px;}
+#practice-content .stats-grid, #practice-content .mascot-row{padding:0 4px;}
+
+/* ---------- Pratiquer : fil de commentaires en direct ---------- */
+.pk-feed{
+  position:sticky; top:0; z-index:40; background:#14141f; border-radius:0 0 16px 16px;
+  padding:10px 14px; margin:0 -16px 14px; max-height:190px; overflow-y:auto;
+  display:flex; flex-direction:column-reverse; gap:6px; box-shadow:0 6px 14px rgba(0,0,0,0.25);
+}
+.pk-feed-item{display:flex; gap:8px; align-items:flex-start; font-size:12.5px; line-height:1.4; padding:6px 9px; border-radius:10px; animation:pkFadeIn .25s ease; color:#c9cad8;}
+.pk-feed-item .ic{font-size:15px; flex-shrink:0; line-height:1.3;}
+.pk-feed-item b{display:block; font-size:12.5px; margin-bottom:1px;}
+.pk-feed-item.good{background:rgba(58,204,50,0.16); color:#d7ffb8;}
+.pk-feed-item.bad{background:rgba(255,75,75,0.16); color:#ffdfe0;}
+.pk-feed-item.neutral{background:rgba(255,200,0,0.14); color:#ffe9a8;}
+.pk-feed-item.action{background:rgba(255,255,255,0.05);}
+@keyframes pkFadeIn{ from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:translateY(0);} }
+
+/* ---------- Pratiquer : table façon Winamax/Betclic ---------- */
+.pk-levelbadge{display:block; text-align:center; margin:0 auto 30px; background:#1a1a2e; color:#ffd54a; font-weight:800; font-size:12px; padding:6px 16px; border-radius:20px; border:1px solid rgba(255,213,74,0.4); width:max-content;}
+.pk-tablewrap{position:relative; padding:0 6px 74px;}
+.pk-table{
+  position:relative; width:100%; max-width:440px; height:220px; margin:0 auto;
+  background:radial-gradient(ellipse at 50% 38%, #1f9053 0%, #146238 55%, #0b3d24 100%);
+  border-radius:50%; border:11px solid #4a2e18;
+  box-shadow:inset 0 0 46px rgba(0,0,0,0.5), 0 10px 22px rgba(0,0,0,0.35);
+}
+.pk-center{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; width:80%;}
+.pk-pot{color:#ffe27a; font-weight:800; font-size:13px; margin-bottom:8px; text-shadow:0 1px 3px rgba(0,0,0,0.7);}
+.pk-boardcards{display:flex; gap:4px; justify-content:center; min-height:52px;}
+.pk-seat{
+  position:absolute; display:flex; flex-direction:column; align-items:center; gap:1px;
+  background:rgba(8,8,18,0.82); border:2px solid rgba(255,255,255,0.14); border-radius:14px;
+  padding:6px 10px; min-width:98px; color:#fff; text-align:center; z-index:3;
+}
+.pk-seat.active{border-color:#ffd54a; box-shadow:0 0 0 3px rgba(255,213,74,0.3), 0 0 16px rgba(255,213,74,0.55);}
+.pk-seat.folded{opacity:.42;}
+.pk-seat .pk-name{font-size:11px; font-weight:800; white-space:nowrap;}
+.pk-seat .pk-stack{font-size:11px; color:#ffd54a; font-weight:700;}
+.pk-seat .pk-status{font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:#ff8080; font-weight:800; margin-top:1px;}
+.pk-seat.pos-top-left{top:-20px; left:0;}
+.pk-seat.pos-top-right{top:-20px; right:0;}
+.pk-seat.pos-top-center{top:-20px; left:50%; transform:translateX(-50%);}
+.pk-seat.pos-bottom{bottom:-64px; left:50%; transform:translateX(-50%);}
+.pk-bet{position:absolute; bottom:-20px; left:50%; transform:translateX(-50%); background:#ffd54a; color:#1a1a2e; font-size:10px; font-weight:800; padding:2px 9px; border-radius:8px; white-space:nowrap; box-shadow:0 2px 4px rgba(0,0,0,0.3);}
+.pk-dealer-chip{position:absolute; top:-9px; right:-9px; width:20px; height:20px; border-radius:50%; background:#fff; color:#333; font-size:10px; font-weight:900; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.4); border:1px solid #ccc;}
+.pk-herocards{display:flex; justify-content:center; gap:8px; margin-top:56px;}
+.pk-hand-name{text-align:center; color:var(--ink-light); font-size:12px; font-weight:700; margin-top:6px; text-transform:uppercase; letter-spacing:.5px;}
+.pk-actionbar{position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:2px solid var(--border); padding:12px 16px; z-index:65; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
+.pk-nexthand{padding:16px;}
 
 /* ---------- Settings ---------- */
 #screen-settings{max-width:520px; margin:0 auto; padding:20px 20px 110px;}
@@ -1569,6 +1613,7 @@ const App=(function(){
   function go(screen){
     Sound.click();
     current=screen;
+    if(screen!=='practice'){ const bar=document.getElementById('pk-actionbar-el'); if(bar) bar.remove(); }
     document.querySelectorAll('.screen').forEach(el=>el.classList.add('hidden'));
     document.getElementById('screen-'+screen).classList.remove('hidden');
     document.getElementById('bottomnav').classList.toggle('hidden', screen==='home'||screen==='lesson');
@@ -1953,7 +1998,8 @@ const Practice=(function(){
   function nextAliveIdx(idx){ let i=idx; do{ i=(i+1)%3; }while(!session.players[i].alive); return i; }
   function nameOf(id){ return session.players.find(p=>p.id===id).name; }
   function currentBlinds(){ return BLIND_LEVELS[Math.min(session.levelIdx, BLIND_LEVELS.length-1)]; }
-  function log(msg){ hand.log.push(msg); }
+  function log(msg){ hand.feed.push({kind:'action', text:msg}); }
+  function logVerdict(v){ hand.feed.push({kind: v.ok===true?'good':(v.ok===false?'bad':'neutral'), title:v.title, text:v.msg}); }
 
   function startSpin(){
     session={
@@ -1987,7 +2033,7 @@ const Practice=(function(){
       ids:order, roles, holes, board:[], deck, deckPos:order.length*2,
       bet, totalContrib, folded, allIn, stage:'preflop',
       actOrder:order.slice(), actPos:-1, actedThisStreet:new Set(), raiseCount:0,
-      log:[], done:false
+      feed:[], done:false
     };
     const blinds=currentBlinds();
     log(`Nouvelle main — palier ${blinds.sb}/${blinds.bb}.`);
@@ -2193,23 +2239,6 @@ const Practice=(function(){
       return {ok:null, title:'Mise moyenne', msg:`${label} : cette mise correspond à une value fine ou un semi-bluff — reste cohérent avec le profil de ton adversaire (unité 4).`};
     }
   }
-  function showCoachModal(verdict){
-    const icon = verdict.ok===true?'✅':(verdict.ok===false?'⚠️':'🤔');
-    const overlay=document.createElement('div');
-    overlay.className='modal-overlay';
-    overlay.innerHTML=`
-      <div class="modal-box">
-        <div style="font-size:44px;">${icon}</div>
-        <h3>${verdict.title}</h3>
-        <p>${verdict.msg}</p>
-        <div class="modal-actions">
-          <button class="btn btn-blue btn-block" id="coach-continue">Continuer</button>
-        </div>
-      </div>`;
-    document.getElementById('modal-root').appendChild(overlay);
-    document.getElementById('coach-continue').onclick=()=>{ overlay.remove(); render(); };
-  }
-
   function heroAction(action){
     if(!hand || hand.done || hand.actOrder[hand.actPos]!=='hero') return;
     const activeIds=hand.ids.filter(x=>!hand.folded[x]);
@@ -2230,16 +2259,37 @@ const Practice=(function(){
     else if(action==='betHalf') act('hero','bet', maxBet+Math.round(pot*0.5));
     else if(action==='betPot') act('hero','bet', maxBet+pot);
     else if(action==='allin') act('hero','bet', hand.bet['hero']+heroStack);
-    showCoachModal(verdict);
+    logVerdict(verdict);
+    render();
   }
 
+  function seatHtml(id,posClass){
+    const p=session.players.find(pl=>pl.id===id);
+    const isActive=!hand.done && hand.actOrder[hand.actPos]===id;
+    const isFolded=hand.folded[id];
+    const isBTN = hand.roles[id]==='BTN' || hand.roles[id]==='BTN/SB';
+    const label = id==='hero' ? '🧑 Vous' : (p.style==='fish' ? '🐟 Récréatif' : '🧠 Régulier');
+    return `<div class="pk-seat ${posClass}${isActive?' active':''}${isFolded?' folded':''}">
+        ${isBTN?'<div class="pk-dealer-chip">D</div>':''}
+        <div class="pk-name">${label}</div>
+        <div class="pk-stack">${p.stack} <span style="opacity:.55;">${hand.roles[id]}</span></div>
+        ${isFolded?'<div class="pk-status">Couché</div>':(hand.allIn[id]?'<div class="pk-status">All-in</div>':'')}
+        ${hand.bet[id]>0?`<div class="pk-bet">${hand.bet[id]}</div>`:''}
+      </div>`;
+  }
+  function feedHtml(){
+    return hand.feed.slice(-16).map(f=>{
+      const icon = f.kind==='good'?'✅':f.kind==='bad'?'⚠️':f.kind==='neutral'?'🤔':'';
+      return `<div class="pk-feed-item ${f.kind}"><span class="ic">${icon}</span><span>${f.title?`<b>${f.title}</b>`:''}${f.text}</span></div>`;
+    }).join('');
+  }
   function render(){
     const c=document.getElementById('practice-content');
     if(!session){
       const st=Save.data.spinStats;
       const cs=Save.data.coachStats;
       c.innerHTML=`
-        <div class="mascot-row"><div class="mascot-emoji">🧑‍🏫</div><div class="speech-bubble">Joue un Spin & Go (3 joueurs, tapis de 500 jetons, blindes qui montent toutes les 3 mains) : un coach analyse chaque action que tu prends et t'explique si c'était optimal, et comment t'améliorer.</div></div>
+        <div class="mascot-row" style="padding-top:20px;"><div class="mascot-emoji">🧑‍🏫</div><div class="speech-bubble">Joue un Spin & Go (3 joueurs, tapis de 500 jetons, blindes qui montent toutes les 3 mains) : un coach commente en direct chaque action que tu prends et t'explique comment t'améliorer.</div></div>
         <div class="stats-grid">
           <div class="stat-card"><div class="v">${st.played}</div><div class="l">Spins joués</div></div>
           <div class="stat-card"><div class="v">${st.won}</div><div class="l">Spins gagnés</div></div>
@@ -2255,16 +2305,14 @@ const Practice=(function(){
       const icon = r.placement===1?'🏆':(r.placement===2?'🥈':'🥉');
       const title = r.placement===1?'Victoire !':(r.placement===2?'2e place':'3e place');
       c.innerHTML=`
-        <div class="table-felt center">
-          <div style="font-size:44px;">${icon}</div>
+        <div class="pk-feed">${feedHtml()}</div>
+        <div style="padding:24px 4px 4px;text-align:center;">
+          <div style="font-size:48px;">${icon}</div>
           <div style="font-size:22px;font-weight:900;margin:6px 0;">${title}</div>
-          <div>+${session.xpAwarded||0} XP</div>
+          <div style="color:var(--ink-light);font-weight:700;">+${session.xpAwarded||0} XP</div>
         </div>
-        <div class="sim-log" id="practice-log"></div>
         <button class="btn btn-green btn-block" style="margin-top:14px;" onclick="Practice.startSpin()">Nouvelle session</button>
       `;
-      const logEl=document.getElementById('practice-log');
-      logEl.innerHTML=hand.log.map(l=>`<div>${l}</div>`).join('');
       return;
     }
     const blinds=currentBlinds();
@@ -2274,58 +2322,62 @@ const Practice=(function(){
     const pot=Object.values(hand.totalContrib).reduce((a,b)=>a+b,0);
     const isHeroTurn=!hand.done && hand.actOrder[hand.actPos]==='hero';
     const justLeveledUp = session.handsAtLevel===1 && session.handsPlayed>1;
-    const rowsHtml=hand.ids.map(id=>{
-      const p=session.players.find(pl=>pl.id===id);
-      const status = hand.folded[id]?' — couché':(hand.allIn[id]?' — all-in':'');
-      return `<div class="chip-stat"><span>${p.name} (${hand.roles[id]})${status}</span><span>${p.stack} jetons${hand.bet[id]?' · mise '+hand.bet[id]:''}</span></div>`;
-    }).join('');
+    const others=hand.ids.filter(id=>id!=='hero');
+    const seatSlots = others.length===2
+      ? [[others[0],'pos-top-left'],[others[1],'pos-top-right']]
+      : [[others[0],'pos-top-center']];
     let revealHtml='';
     if(hand.done && hand.stage==='showdown'){
-      revealHtml = hand.ids.filter(id=>id!=='hero' && !hand.folded[id]).map(id=>{
-        return `<div class="hero-label">${nameOf(id)}</div><div id="practice-reveal-${id}"></div>`;
+      revealHtml = hand.ids.filter(id=>!hand.folded[id]).map(id=>{
+        const nm = id==='hero'?'Vous':nameOf(id);
+        return `<div class="pk-hand-name">${nm} : ${evaluateBest([...hand.holes[id],...hand.board]).name}</div>${id!=='hero'?`<div class="cards-row" id="practice-reveal-${id}" style="margin-bottom:6px;"></div>`:''}`;
       }).join('');
     }
     c.innerHTML=`
-      <div class="scenario-box">Palier de blindes : ${blinds.sb}/${blinds.bb}${justLeveledUp?' — les blindes viennent de monter ! 📈':''}</div>
-      ${rowsHtml}
-      <div class="table-felt">
-        <div class="pot-display">Pot : ${pot}${heroToCall>0 && isHeroTurn?' — à suivre : '+heroToCall:''}</div>
-        <div class="board-label" style="color:#fff;opacity:.8;">Board</div>
-        <div id="practice-board"></div>
-        <div class="hero-label">Vos cartes</div>
-        <div id="practice-hero-hole"></div>
+      <div class="pk-feed">${feedHtml()}</div>
+      <div class="pk-levelbadge">Palier ${blinds.sb}/${blinds.bb}${justLeveledUp?' 📈':''}</div>
+      <div class="pk-tablewrap">
+        <div class="pk-table">
+          ${seatSlots.map(([id,pos])=>seatHtml(id,pos)).join('')}
+          ${seatHtml('hero','pos-bottom')}
+          <div class="pk-center">
+            <div class="pk-pot">POT ${pot}${heroToCall>0 && isHeroTurn?' · à suivre '+heroToCall:''}</div>
+            <div class="pk-boardcards" id="pk-board"></div>
+          </div>
+        </div>
+        <div class="pk-herocards" id="pk-herocards"></div>
         ${revealHtml}
       </div>
-      <div class="sim-actions" id="practice-actions"></div>
-      <div class="sim-log" id="practice-log"></div>
-      ${hand.done?'<button class="btn btn-green btn-block" style="margin-top:14px;" onclick="Practice.nextHand()">Main suivante</button>':''}
+      ${hand.done?'<div class="pk-nexthand"><button class="btn btn-green btn-block" onclick="Practice.nextHand()">Main suivante</button></div>':''}
     `;
-    document.getElementById('practice-board').appendChild(cardsRow(hand.board,{small:true}));
-    document.getElementById('practice-hero-hole').appendChild(cardsRow(hand.holes['hero'],{small:true}));
+    document.getElementById('pk-board').appendChild(cardsRow(hand.board,{small:true}));
+    document.getElementById('pk-herocards').appendChild(cardsRow(hand.holes['hero'],{small:true}));
     if(hand.done && hand.stage==='showdown'){
       hand.ids.filter(id=>id!=='hero' && !hand.folded[id]).forEach(id=>{
         const el=document.getElementById('practice-reveal-'+id);
         if(el) el.appendChild(cardsRow(hand.holes[id],{small:true}));
       });
     }
-    const actionsEl=document.getElementById('practice-actions');
+    let bar=document.getElementById('pk-actionbar-el');
+    if(bar) bar.remove();
     if(isHeroTurn){
+      bar=document.createElement('div');
+      bar.className='pk-actionbar';
+      bar.id='pk-actionbar-el';
+      document.body.appendChild(bar);
       const mk=(label,cls,fn)=>{ const b=document.createElement('button'); b.className='btn btn-sm '+cls; b.textContent=label; b.onclick=fn; return b; };
       if(heroToCall<=0){
-        actionsEl.appendChild(mk('Checker','btn-outline',()=>heroAction('check')));
-        actionsEl.appendChild(mk('Miser 1/2 pot','btn-blue',()=>heroAction('betHalf')));
-        actionsEl.appendChild(mk('Miser pot','btn-purple',()=>heroAction('betPot')));
-        actionsEl.appendChild(mk('All-in','btn-red',()=>heroAction('allin')));
+        bar.appendChild(mk('Checker','btn-outline',()=>heroAction('check')));
+        bar.appendChild(mk('Miser 1/2 pot','btn-blue',()=>heroAction('betHalf')));
+        bar.appendChild(mk('Miser pot','btn-purple',()=>heroAction('betPot')));
+        bar.appendChild(mk('All-in','btn-red',()=>heroAction('allin')));
       } else {
-        actionsEl.appendChild(mk('Se coucher','btn-outline',()=>heroAction('fold')));
-        actionsEl.appendChild(mk('Suivre ('+heroToCall+')','btn-blue',()=>heroAction('call')));
-        actionsEl.appendChild(mk('Relancer pot','btn-purple',()=>heroAction('betPot')));
-        actionsEl.appendChild(mk('All-in','btn-red',()=>heroAction('allin')));
+        bar.appendChild(mk('Se coucher','btn-outline',()=>heroAction('fold')));
+        bar.appendChild(mk('Suivre ('+heroToCall+')','btn-blue',()=>heroAction('call')));
+        bar.appendChild(mk('Relancer pot','btn-purple',()=>heroAction('betPot')));
+        bar.appendChild(mk('All-in','btn-red',()=>heroAction('allin')));
       }
     }
-    const logEl=document.getElementById('practice-log');
-    logEl.innerHTML=hand.log.map(l=>`<div>${l}</div>`).join('');
-    logEl.scrollTop=logEl.scrollHeight;
   }
 
   return {render, startSpin, nextHand:()=>{ startHand(); }, heroAction};
