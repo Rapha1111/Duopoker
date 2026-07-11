@@ -15,6 +15,7 @@
   --ink:#3c3c3c; --ink-light:#777;
   --bg:#f7f7f7; --panel:#ffffff; --border:#e5e5e5;
   --locked:#cfcfcf;
+  --navh:60px; --actionh:60px;
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;height:100%;}
@@ -60,18 +61,6 @@ button{font-family:inherit; cursor:pointer;}
 .stat-pill.streak{color:#ff9600;}
 .stat-pill.gems{color:var(--blue);}
 
-/* ---------- Home ---------- */
-#screen-home{
-  background:linear-gradient(160deg,var(--felt),var(--felt-dark));
-  min-height:100vh; display:flex; flex-direction:column; align-items:center;
-  justify-content:center; color:#fff; text-align:center; padding:30px 20px;
-}
-.logo-big{font-size:64px; margin-bottom:6px;}
-.title-big{font-size:38px; font-weight:900; letter-spacing:1px; margin:0 0 4px;}
-.subtitle{font-size:16px; opacity:.85; max-width:420px; margin:0 0 30px; line-height:1.5;}
-.home-actions{display:flex; flex-direction:column; gap:14px; width:100%; max-width:320px;}
-.home-suits{font-size:22px; letter-spacing:10px; opacity:.7; margin-bottom:18px;}
-
 /* ---------- Path / skill tree ---------- */
 #screen-path{max-width:640px; margin:0 auto; padding-bottom:120px;}
 .unit-banner{
@@ -104,7 +93,7 @@ button{font-family:inherit; cursor:pointer;}
 /* ---------- Bottom nav ---------- */
 .bottomnav{
   position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:2px solid var(--border);
-  display:flex; justify-content:space-around; padding:8px 0; z-index:60;
+  display:flex; justify-content:space-around; align-items:center; height:var(--navh); padding:0; z-index:60;
 }
 .nav-item{display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:none; color:var(--ink-light); font-size:11px; font-weight:700; padding:6px 10px; border-radius:10px;}
 .nav-item.active{color:var(--green-dark);}
@@ -162,12 +151,16 @@ button{font-family:inherit; cursor:pointer;}
   justify-content:space-between; padding:4px 6px; font-weight:800; flex-shrink:0;
 }
 .pcard.small{width:44px; height:62px; padding:2px 4px; border-radius:6px;}
+.pcard.tiny{width:26px; height:36px; padding:1px 2px; border-radius:4px;}
 .pcard .rank-top{font-size:16px; line-height:1;}
 .pcard.small .rank-top{font-size:12px;}
+.pcard.tiny .rank-top{font-size:8px;}
 .pcard .suit-mid{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:26px;}
 .pcard.small .suit-mid{font-size:18px;}
+.pcard.tiny .suit-mid{font-size:12px;}
 .pcard .rank-bot{font-size:16px; align-self:flex-end; transform:rotate(180deg); line-height:1;}
 .pcard.small .rank-bot{font-size:12px;}
+.pcard.tiny .rank-bot{font-size:8px;}
 .pcard.red{color:#e0333f;}
 .pcard.black{color:#2b2b2b;}
 .pcard.back{background:repeating-linear-gradient(45deg,var(--blue),var(--blue) 6px,var(--blue-dark) 6px,var(--blue-dark) 12px); border:1px solid var(--blue-dark);}
@@ -214,61 +207,74 @@ button{font-family:inherit; cursor:pointer;}
 .strength-bar{width:80px; height:8px; background:var(--border); border-radius:6px; overflow:hidden;}
 .strength-fill{height:100%; border-radius:6px;}
 
-/* ---------- Daily / Simulator ---------- */
-#screen-practice{max-width:640px; margin:0 auto; padding:0 0 130px;}
+/* ---------- Cours ---------- */
 #screen-courses{max-width:640px; margin:0 auto; padding:20px 20px 110px;}
 .card-title-row{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
 .card-title-row h2{margin:0; font-size:22px;}
-#practice-content{padding:0 16px;}
+
+/* ---------- Pratiquer : écran plein cadre, sans scroll ---------- */
+#screen-practice{
+  max-width:640px; margin:0 auto; padding:0;
+  height:100vh; height:100dvh; overflow:hidden;
+  display:flex; flex-direction:column;
+}
+#screen-practice .page-header{flex:0 0 auto; padding:8px 16px 2px; max-width:none;}
+#screen-practice .page-header h1{font-size:17px;}
+#practice-content{
+  flex:1 1 auto; min-height:0; overflow:hidden;
+  display:flex; flex-direction:column;
+  padding:2px 12px calc(var(--navh) + var(--actionh) + 6px);
+}
 #practice-content .stats-grid, #practice-content .mascot-row{padding:0 4px;}
 
-/* ---------- Pratiquer : fil de commentaires en direct ---------- */
+/* ---------- Pratiquer : bloc fixe du coach (une seule ligne, sans scroll, sans animation) ---------- */
+.pk-feedtitle{flex:0 0 auto; font-size:10px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:#8a8ca8; margin:2px 0 3px; padding:0 16px;}
 .pk-feed{
-  position:sticky; top:0; z-index:40; background:#14141f; border-radius:0 0 16px 16px;
-  padding:10px 14px; margin:0 -16px 14px; max-height:190px; overflow-y:auto;
-  display:flex; flex-direction:column-reverse; gap:6px; box-shadow:0 6px 14px rgba(0,0,0,0.25);
+  flex:0 0 auto; background:#14141f; border-radius:14px;
+  padding:0; margin:0 16px 6px; min-height:56px; max-height:26vh; overflow:hidden;
+  display:flex; align-items:center; box-shadow:0 4px 14px rgba(0,0,0,0.3);
 }
-.pk-feed-item{display:flex; gap:8px; align-items:flex-start; font-size:12.5px; line-height:1.4; padding:6px 9px; border-radius:10px; animation:pkFadeIn .25s ease; color:#c9cad8;}
-.pk-feed-item .ic{font-size:15px; flex-shrink:0; line-height:1.3;}
-.pk-feed-item b{display:block; font-size:12.5px; margin-bottom:1px;}
-.pk-feed-item.good{background:rgba(58,204,50,0.16); color:#d7ffb8;}
-.pk-feed-item.bad{background:rgba(255,75,75,0.16); color:#ffdfe0;}
-.pk-feed-item.neutral{background:rgba(255,200,0,0.14); color:#ffe9a8;}
-.pk-feed-item.action{background:rgba(255,255,255,0.05);}
-@keyframes pkFadeIn{ from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:translateY(0);} }
+.pk-feed-empty{color:#7c7e96; font-size:12.5px; padding:10px 12px; text-align:center; width:100%;}
+.pk-feed-item{display:flex; gap:8px; align-items:flex-start; font-size:14px; font-weight:700; line-height:1.35; padding:10px 12px; border-radius:14px; border-left:4px solid transparent; color:#dcddea; width:100%;}
+.pk-feed-item .ic{font-size:19px; flex-shrink:0; line-height:1.3;}
+.pk-feed-item b{display:block; font-size:14px; margin-bottom:1px;}
+.pk-feed-item.good{background:rgba(58,204,50,0.2); color:#e3ffce; border-left-color:var(--green);}
+.pk-feed-item.bad{background:rgba(255,75,75,0.2); color:#ffe3e3; border-left-color:var(--red);}
+.pk-feed-item.neutral{background:rgba(255,200,0,0.18); color:#fff2cf; border-left-color:var(--gold);}
 
 /* ---------- Pratiquer : table façon Winamax/Betclic ---------- */
-.pk-levelbadge{display:block; text-align:center; margin:0 auto 30px; background:#1a1a2e; color:#ffd54a; font-weight:800; font-size:12px; padding:6px 16px; border-radius:20px; border:1px solid rgba(255,213,74,0.4); width:max-content;}
-.pk-tablewrap{position:relative; padding:0 6px 74px;}
+.pk-levelbadge{flex:0 0 auto; display:block; text-align:center; margin:2px auto 4px; background:#1a1a2e; color:#ffd54a; font-weight:800; font-size:11px; padding:4px 14px; border-radius:20px; border:1px solid rgba(255,213,74,0.4); width:max-content;}
+.pk-tablewrap{flex:1 1 auto; min-height:0; width:100%; display:flex; flex-direction:column; align-items:center; gap:4px;}
 .pk-table{
-  position:relative; width:100%; max-width:440px; height:220px; margin:0 auto;
+  position:relative; width:100%; max-width:420px; flex:1 1 auto; min-height:120px;
   background:radial-gradient(ellipse at 50% 38%, #1f9053 0%, #146238 55%, #0b3d24 100%);
-  border-radius:50%; border:11px solid #4a2e18;
-  box-shadow:inset 0 0 46px rgba(0,0,0,0.5), 0 10px 22px rgba(0,0,0,0.35);
+  border-radius:50%; border:9px solid #4a2e18;
+  box-shadow:inset 0 0 40px rgba(0,0,0,0.5), 0 8px 18px rgba(0,0,0,0.35);
 }
 .pk-center{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; width:80%;}
-.pk-pot{color:#ffe27a; font-weight:800; font-size:13px; margin-bottom:8px; text-shadow:0 1px 3px rgba(0,0,0,0.7);}
-.pk-boardcards{display:flex; gap:4px; justify-content:center; min-height:52px;}
+.pk-pot{color:#ffe27a; font-weight:800; font-size:12px; margin-bottom:6px; text-shadow:0 1px 3px rgba(0,0,0,0.7);}
+.pk-boardcards{display:flex; gap:3px; justify-content:center; min-height:36px;}
 .pk-seat{
   position:absolute; display:flex; flex-direction:column; align-items:center; gap:1px;
-  background:rgba(8,8,18,0.82); border:2px solid rgba(255,255,255,0.14); border-radius:14px;
-  padding:6px 10px; min-width:98px; color:#fff; text-align:center; z-index:3;
+  background:rgba(8,8,18,0.85); border:2px solid rgba(255,255,255,0.14); border-radius:12px;
+  padding:4px 8px; min-width:84px; color:#fff; text-align:center; z-index:3;
 }
-.pk-seat.active{border-color:#ffd54a; box-shadow:0 0 0 3px rgba(255,213,74,0.3), 0 0 16px rgba(255,213,74,0.55);}
-.pk-seat.folded{opacity:.42;}
-.pk-seat .pk-name{font-size:11px; font-weight:800; white-space:nowrap;}
-.pk-seat .pk-stack{font-size:11px; color:#ffd54a; font-weight:700;}
-.pk-seat .pk-status{font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:#ff8080; font-weight:800; margin-top:1px;}
-.pk-seat.pos-top-left{top:-20px; left:0;}
-.pk-seat.pos-top-right{top:-20px; right:0;}
-.pk-seat.pos-top-center{top:-20px; left:50%; transform:translateX(-50%);}
-.pk-seat.pos-bottom{bottom:-64px; left:50%; transform:translateX(-50%);}
-.pk-bet{position:absolute; bottom:-20px; left:50%; transform:translateX(-50%); background:#ffd54a; color:#1a1a2e; font-size:10px; font-weight:800; padding:2px 9px; border-radius:8px; white-space:nowrap; box-shadow:0 2px 4px rgba(0,0,0,0.3);}
-.pk-dealer-chip{position:absolute; top:-9px; right:-9px; width:20px; height:20px; border-radius:50%; background:#fff; color:#333; font-size:10px; font-weight:900; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.4); border:1px solid #ccc;}
-.pk-herocards{display:flex; justify-content:center; gap:8px; margin-top:56px;}
-.pk-hand-name{text-align:center; color:var(--ink-light); font-size:12px; font-weight:700; margin-top:6px; text-transform:uppercase; letter-spacing:.5px;}
-.pk-actionbar{position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:2px solid var(--border); padding:12px 16px; z-index:65; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
-.pk-nexthand{padding:16px;}
+.pk-seat.active{border-color:#ffd54a; box-shadow:0 0 0 3px rgba(255,213,74,0.3), 0 0 14px rgba(255,213,74,0.55);}
+.pk-seat.folded{opacity:.4;}
+.pk-seat .pk-name{font-size:10px; font-weight:800; white-space:nowrap;}
+.pk-seat .pk-stack{font-size:10px; color:#ffd54a; font-weight:700;}
+.pk-seat .pk-status{font-size:8px; text-transform:uppercase; letter-spacing:.5px; color:#ff8080; font-weight:800; margin-top:1px;}
+.pk-seat.pos-top-left{top:3%; left:1%;}
+.pk-seat.pos-top-right{top:3%; right:1%;}
+.pk-seat.pos-top-center{top:3%; left:50%; transform:translateX(-50%);}
+.pk-seat.pos-bottom{bottom:3%; left:50%; transform:translateX(-50%);}
+.pk-bet{position:absolute; bottom:-16px; left:50%; transform:translateX(-50%); background:#ffd54a; color:#1a1a2e; font-size:9px; font-weight:800; padding:2px 7px; border-radius:7px; white-space:nowrap; box-shadow:0 2px 4px rgba(0,0,0,0.3);}
+.pk-dealer-chip{position:absolute; top:-8px; right:-8px; width:17px; height:17px; border-radius:50%; background:#fff; color:#333; font-size:9px; font-weight:900; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.4); border:1px solid #ccc;}
+.pk-showdown-name{font-size:8px; font-weight:800; color:#ffe27a; text-transform:uppercase; letter-spacing:.3px; margin-top:1px; white-space:nowrap;}
+.pk-cardsmini{display:flex; gap:2px; justify-content:center; margin-top:2px;}
+.pk-herocards{flex:0 0 auto; display:flex; justify-content:center; gap:6px; margin-top:2px;}
+.pk-actionbar{position:fixed; left:0; right:0; bottom:var(--navh); height:var(--actionh); background:#fff; border-top:2px solid var(--border); padding:6px 10px; z-index:65; display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:nowrap; overflow-x:auto;}
+.pk-actionbar .btn{padding:8px 10px; font-size:11px; white-space:nowrap; flex-shrink:0;}
 
 /* ---------- Settings ---------- */
 #screen-settings{max-width:520px; margin:0 auto; padding:20px 20px 110px;}
@@ -298,23 +304,10 @@ h1,h2,h3{margin:0;}
   .pcard{width:52px; height:74px;}
   .pcard .rank-top,.pcard .rank-bot{font-size:13px;}
   .pcard .suit-mid{font-size:20px;}
-  .title-big{font-size:30px;}
 }
 </style>
 </head>
 <body>
-
-<!-- ================= HOME ================= -->
-<div id="screen-home" class="screen">
-  <div class="logo-big">♠️🦈♥️</div>
-  <h1 class="title-big">PokerDuo</h1>
-  <div class="home-suits">♠ ♥ ♦ ♣</div>
-  <p class="subtitle">Maîtrise le Spin & Go (3-way, Texas Hold'em No-Limit, blindes progressives) pas à pas, comme une langue. Ranges préflop, outs, call/raise postflop, exploitation des récréatifs et équité — leçons courtes, progression sauvegardée sur cet appareil.</p>
-  <div class="home-actions">
-    <button class="btn btn-green btn-block" onclick="App.startOrContinue()">Commencer</button>
-    <button class="btn btn-outline btn-block" id="btn-continue-guest" onclick="App.go('path')">J'ai déjà une progression</button>
-  </div>
-</div>
 
 <!-- ================= PATH ================= -->
 <div id="screen-path" class="screen hidden">
@@ -348,7 +341,9 @@ h1,h2,h3{margin:0;}
 <!-- ================= PRATIQUER (coach) ================= -->
 <div id="screen-practice" class="screen hidden">
   <div class="page-header"><h1>Pratiquer</h1></div>
-  <div id="practice-content" style="padding:0 20px;"></div>
+  <div class="pk-feedtitle">🧑‍🏫 Coach en direct</div>
+  <div class="pk-feed" id="pk-feed-fixed"><div class="pk-feed-empty">🧑‍🏫 Le coach commentera ta prochaine décision…</div></div>
+  <div id="practice-content"></div>
 </div>
 
 <!-- ================= COURS (relecture) ================= -->
@@ -578,9 +573,10 @@ function cardEl(card,opts){
   opts=opts||{};
   const div=document.createElement('div');
   const red = card.s==='H'||card.s==='D';
-  div.className='pcard '+(red?'red':'black')+(opts.small?' small':'');
+  const sizeClass = opts.tiny?' tiny':(opts.small?' small':'');
+  div.className='pcard '+(red?'red':'black')+sizeClass;
   if(opts.hidden){
-    div.className='pcard back'+(opts.small?' small':'');
+    div.className='pcard back'+sizeClass;
     return div;
   }
   const rk=RANK_SYM[card.r];
@@ -1609,14 +1605,14 @@ function updateStreak(){
    APP / ROUTER
    ========================================================================= */
 const App=(function(){
-  let current='home';
+  let current='path';
   function go(screen){
     Sound.click();
     current=screen;
     if(screen!=='practice'){ const bar=document.getElementById('pk-actionbar-el'); if(bar) bar.remove(); }
     document.querySelectorAll('.screen').forEach(el=>el.classList.add('hidden'));
     document.getElementById('screen-'+screen).classList.remove('hidden');
-    document.getElementById('bottomnav').classList.toggle('hidden', screen==='home'||screen==='lesson');
+    document.getElementById('bottomnav').classList.toggle('hidden', screen==='lesson');
     document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active', el.dataset.tab===screen));
     Save.persist();
     if(screen==='path'){ Path.render(); Path.scrollToCurrent(); }
@@ -1628,8 +1624,7 @@ const App=(function(){
       window.scrollTo(0,0);
     }
   }
-  function startOrContinue(){ go('path'); }
-  return {go, startOrContinue, get current(){return current;}};
+  return {go, get current(){return current;}};
 })();
 
 /* =========================================================================
@@ -2000,6 +1995,12 @@ const Practice=(function(){
   function currentBlinds(){ return BLIND_LEVELS[Math.min(session.levelIdx, BLIND_LEVELS.length-1)]; }
   function log(msg){ hand.feed.push({kind:'action', text:msg}); }
   function logVerdict(v){ hand.feed.push({kind: v.ok===true?'good':(v.ok===false?'bad':'neutral'), title:v.title, text:v.msg}); }
+  function bb(chips){
+    const bbv=currentBlinds().bb;
+    const v=chips/bbv;
+    const rounded=Math.round(v*10)/10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  }
 
   function startSpin(){
     session={
@@ -2048,6 +2049,7 @@ const Practice=(function(){
     else { postBlind(order[0],blinds.sb); postBlind(order[1],blinds.bb); }
     advanceTurn();
     render();
+    renderCoachFeed(null);
   }
 
   function isRoundOver(){
@@ -2168,6 +2170,9 @@ const Practice=(function(){
       s.xp+=xp;
       session.xpAwarded=xp;
       updateStreak(); checkBadges(); Save.persist();
+    } else {
+      const handRef=hand;
+      setTimeout(()=>{ if(hand===handRef && hand.done && !session.finished) startHand(); }, 3000);
     }
   }
 
@@ -2198,9 +2203,19 @@ const Practice=(function(){
     }
   }
 
-  function evaluateCoach(action){
+  function tierOf(strength){
+    if(strength>=0.82) return 'monster';
+    if(strength>=0.66) return 'strong';
+    if(strength>=0.52) return 'good';
+    if(strength>=0.38) return 'marginal';
+    if(strength>=0.22) return 'weak';
+    return 'air';
+  }
+  function cap1(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+  function evaluateCoach(type){
     const activeIds=hand.ids.filter(x=>!hand.folded[x]);
-    const activeOpponents=activeIds.filter(x=>x!=='hero').length;
+    const opponentIds=activeIds.filter(x=>x!=='hero');
+    const activeOpponents=opponentIds.length;
     const maxBet=Math.max(...activeIds.map(x=>hand.bet[x]));
     const toCall=maxBet-hand.bet['hero'];
     const pot=Object.values(hand.totalContrib).reduce((a,b)=>a+b,0);
@@ -2209,57 +2224,140 @@ const Practice=(function(){
       ? Math.max(0, Math.min(1, chenScore(hand.holes['hero'])/20))
       : computeEquityMC(hand.holes['hero'], hand.board, activeOpponents, 150);
     const pct=Math.round(strength*100);
-    const label = isPreflop ? `Un score de force (Chen) de ${pct}/100` : `Une équité estimée à ${pct}%`;
-    const type = action==='fold'?'fold':action==='check'?'check':action==='call'?'call':'bet';
+    const tier=tierOf(strength);
+    const label = isPreflop ? `un score de force de ${Math.round(strength*200)/10}/20` : `une équité estimée à ${pct}%`;
+    const Label=cap1(label);
+    const heroStackBB=Math.round(session.players.find(p=>p.id==='hero').stack/currentBlinds().bb);
+    const opponentStyles=opponentIds.map(id=>session.players.find(p=>p.id===id).style);
+    const hasFish=opponentStyles.includes('fish');
+    const onlyRegs=opponentStyles.length>0 && opponentStyles.every(s=>s==='reg');
 
+    let verdict;
     if(toCall>0){
       const reqEq=toCall/(pot+toCall);
       const reqPct=Math.round(reqEq*100);
       if(type==='fold'){
-        return strength>=reqEq+0.05
-          ? {ok:false, title:'Fold trop prudent', msg:`${label} contre un seuil requis de ${reqPct}% pour suivre : continuer était plus rentable qu'un fold ici.`}
-          : {ok:true, title:'Bon fold', msg:`${label}, en dessous du seuil requis (${reqPct}%) : se coucher était la décision correcte.`};
+        verdict = strength>=reqEq+0.05
+          ? {ok:false, title:pick(['Fold trop prudent','Fold discutable','Occasion manquée','Trop craintif']), msg:pick([
+              `Avec ${label}, tu dépassais le seuil requis de ${reqPct}% : continuer était plus rentable qu'un fold ici.`,
+              `${Label} suffisait largement face aux ${reqPct}% requis — ce fold coûte de l'équité sur la durée.`,
+              `Tu avais les cotes pour continuer (${reqPct}% requis contre ${label}) : ce fold est trop serré.`
+            ])}
+          : {ok:true, title:pick(['Bon fold','Fold solide','Décision propre','Fold rentable']), msg:pick([
+              `Avec ${label}, en dessous du seuil requis (${reqPct}%) : se coucher était la décision correcte.`,
+              `${Label}, sous les ${reqPct}% requis pour suivre : bon réflexe de te coucher.`,
+              `Pas assez d'équité (${label} contre ${reqPct}% requis) pour justifier un call ici.`
+            ])};
+      } else if(type==='call'){
+        verdict = strength>=reqEq
+          ? {ok:true, title:pick(['Bon call','Call rentable','Suivi justifié','Cote respectée']), msg:pick([
+              `${Label} dépasse le seuil requis (${reqPct}%) : suivre est rentable.`,
+              `Avec ${label} contre ${reqPct}% requis, ce call est mathématiquement correct.`,
+              `Bonne lecture des cotes : ${label} couvre largement le ${reqPct}% nécessaire.`
+            ])}
+          : {ok:false, title:pick(['Call discutable','Call limite','Cote insuffisante']), msg:pick([
+              `${Label}, inférieure au seuil requis (${reqPct}%). Ce call n'est rentable que si tu exploites une raison précise (bluffs fréquents, cotes implicites).`,
+              `Sur le papier, ${label} ne couvre pas les ${reqPct}% requis — call à justifier uniquement par une exploitation ciblée.`,
+              `Ce call demande plus d'équité (${reqPct}% requis) que ce que tu as (${label}), sauf lecture spécifique de l'adversaire.`
+            ])};
+      } else {
+        if(tier==='monster' || tier==='strong'){
+          verdict={ok:true, title:pick(['Bonne relance','Value clean','Relance méritée']), msg:pick([
+            `Avec ${label}, relancer pour la value est cohérent : fais payer le maximum.`,
+            `${Label} : c'est le moment de faire grossir le pot, pas de juste suivre.`,
+            `Main assez forte (${label}) pour reprendre l'initiative plutôt que de simplement suivre.`
+          ])};
+        } else if(tier==='air' || tier==='weak'){
+          verdict={ok:null, title:pick(['Relance-bluff','Coup audacieux','Semi-bluff osé']), msg:pick([
+            `${Label} : c'est une relance-bluff pure. Vérifie que ton adversaire est capable de se coucher.`,
+            `Peu d'équité brute (${label}) : ce n'est rentable que si l'adversaire fold assez souvent face à une relance.`,
+            `Bluff-raise avec ${label} : à réserver aux adversaires capables de lâcher leur main.`
+          ])};
+        } else {
+          verdict={ok:null, title:pick(['Relance moyenne','Entre deux eaux','Ligne discutable']), msg:pick([
+            `${Label} : cette relance est entre deux eaux, ni value franche ni bluff pur. Un simple call est souvent plus simple.`,
+            `Avec ${label}, une relance ici manque de clarté : décide si tu veux value-bet ou bluffer, rarement les deux à la fois.`
+          ])};
+        }
       }
-      if(type==='call'){
-        return strength>=reqEq
-          ? {ok:true, title:'Bon call', msg:`${label} dépasse le seuil requis (${reqPct}%) : suivre est rentable.`}
-          : {ok:false, title:'Call discutable', msg:`${label}, inférieure au seuil requis (${reqPct}%). Ce call n'est rentable que si tu as une bonne raison d'exploiter ton adversaire (bluffs fréquents, cotes implicites).`};
-      }
-      if(strength>=0.65) return {ok:true, title:'Bonne relance', msg:`${label} : relancer pour la value est cohérent.`};
-      if(strength<0.3) return {ok:null, title:'Relance-bluff', msg:`${label} : c'est une relance-bluff pure. Vérifie que ton adversaire est capable de se coucher — évite ça contre un joueur qui paie tout.`};
-      return {ok:null, title:'Relance moyenne', msg:`${label} : cette relance est entre deux eaux, ni value franche ni bluff pur. Un simple call est souvent plus simple à jouer.`};
     } else {
       if(type==='check'){
-        return strength>=0.68
-          ? {ok:false, title:'Check trop passif', msg:`${label} : miser pour value aurait probablement rapporté plus de jetons.`}
-          : {ok:true, title:'Bon check', msg:`${label} : checker est raisonnable ici, pas assez de force pour value bet, pas besoin de bluffer.`};
+        verdict = (tier==='monster' || tier==='strong')
+          ? {ok:false, title:pick(['Check trop passif','Value manquée','Occasion ratée']), msg:pick([
+              `Avec ${label}, miser pour value aurait probablement rapporté plus de jetons qu'un check.`,
+              `${Label} : une main aussi forte mérite généralement une mise, pas un check.`,
+              `Checker ici laisse des jetons sur la table vu ${label}.`
+            ])}
+          : {ok:true, title:pick(['Bon check','Check raisonnable','Choix sobre']), msg:pick([
+              `Avec ${label}, checker est raisonnable ici : pas assez de force pour value bet, pas besoin de bluffer.`,
+              `${Label} : un check garde le pot petit sans risque inutile.`
+            ])};
+      } else {
+        if(tier==='monster' || tier==='strong'){
+          verdict={ok:true, title:pick(['Bonne value bet','Mise méritée','Value bien sentie']), msg:pick([
+            `${Label} : cette mise pour value est justifiée.`,
+            `Avec ${label}, miser fait grossir le pot pendant que tu es devant.`
+          ])};
+        } else if(tier==='air' || tier==='weak'){
+          verdict={ok:null, title:pick(['Bluff','Mise sans main','Pari sur le fold']), msg:pick([
+            `${Label} : c'est un bluff. Vérifie que ton adversaire est capable de se coucher avant de répéter ce type de mise.`,
+            `Peu de valeur brute (${label}) : cette mise ne fonctionne que si l'adversaire fold.`
+          ])};
+        } else {
+          verdict={ok:null, title:pick(['Mise moyenne','Value fine ou semi-bluff','Ligne à nuancer']), msg:pick([
+            `${Label} correspond à une value fine ou un semi-bluff — reste cohérent avec le profil de ton adversaire.`
+          ])};
+        }
       }
-      if(strength>=0.6) return {ok:true, title:'Bonne value bet', msg:`${label} : cette mise pour value est justifiée.`};
-      if(strength<0.3) return {ok:null, title:'Bluff', msg:`${label} : c'est un bluff. Vérifie que ton adversaire est capable de se coucher avant de répéter ce type de mise.`};
-      return {ok:null, title:'Mise moyenne', msg:`${label} : cette mise correspond à une value fine ou un semi-bluff — reste cohérent avec le profil de ton adversaire (unité 4).`};
     }
+    if(isPreflop && heroStackBB<=15){
+      verdict.msg += ' ' + pick([
+        `Avec seulement ${heroStackBB} BB, pense push/fold plutôt qu'en mise progressive.`,
+        `À ${heroStackBB} BB, ta range doit déjà s'élargir nettement.`,
+        ``
+      ]);
+    } else if(!isPreflop && hasFish){
+      verdict.msg += ' ' + pick([
+        `Contre un profil récréatif, privilégie la value plutôt que le bluff.`,
+        `Rappel : un joueur récréatif se couche rarement, adapte ta fréquence de bluff.`,
+        ``
+      ]);
+    } else if(!isPreflop && onlyRegs){
+      verdict.msg += ' ' + pick([
+        `Face à un régulier, reste équilibré : il punira les patterns trop prévisibles.`,
+        ``
+      ]);
+    }
+    return verdict;
   }
   function heroAction(action){
     if(!hand || hand.done || hand.actOrder[hand.actPos]!=='hero') return;
     const activeIds=hand.ids.filter(x=>!hand.folded[x]);
     const maxBet=Math.max(...activeIds.map(x=>hand.bet[x]));
     const toCall=maxBet-hand.bet['hero'];
-    if(action==='check' && toCall>0) return;
     const pot=Object.values(hand.totalContrib).reduce((a,b)=>a+b,0);
     const heroStack=session.players.find(p=>p.id==='hero').stack;
-    const verdict=evaluateCoach(action);
+    const bbv=currentBlinds().bb;
+    let type;
+    if(action==='fold') type='fold';
+    else if(action==='checkcall') type = toCall>0 ? 'call' : 'check';
+    else type='bet';
+    const verdict=evaluateCoach(type);
     const cs=Save.data.coachStats;
     cs.decisions++;
     if(verdict.ok===true) cs.good++;
     else if(verdict.ok===false) cs.bad++;
     Save.persist();
     if(action==='fold') act('hero','fold');
-    else if(action==='check') act('hero','check');
-    else if(action==='call') act('hero','call');
-    else if(action==='betHalf') act('hero','bet', maxBet+Math.round(pot*0.5));
-    else if(action==='betPot') act('hero','bet', maxBet+pot);
+    else if(action==='checkcall'){ if(toCall>0) act('hero','call'); else act('hero','check'); }
+    else if(action==='raise2bb') act('hero','bet', Math.max(2*bbv, maxBet+bbv));
+    else if(action==='raise3bb') act('hero','bet', Math.max(3*bbv, maxBet+2*bbv));
+    else if(action==='bet35') act('hero','bet', maxBet+Math.round(pot*0.35));
+    else if(action==='bet65') act('hero','bet', maxBet+Math.round(pot*0.65));
+    else if(action==='bet100') act('hero','bet', maxBet+pot);
     else if(action==='allin') act('hero','bet', hand.bet['hero']+heroStack);
     logVerdict(verdict);
+    renderCoachFeed(verdict);
     render();
   }
 
@@ -2269,22 +2367,30 @@ const Practice=(function(){
     const isFolded=hand.folded[id];
     const isBTN = hand.roles[id]==='BTN' || hand.roles[id]==='BTN/SB';
     const label = id==='hero' ? '🧑 Vous' : (p.style==='fish' ? '🐟 Récréatif' : '🧠 Régulier');
+    const showShowdown = hand.done && hand.stage==='showdown' && !isFolded;
+    const showdownName = showShowdown ? evaluateBest([...hand.holes[id],...hand.board]).name : null;
     return `<div class="pk-seat ${posClass}${isActive?' active':''}${isFolded?' folded':''}">
         ${isBTN?'<div class="pk-dealer-chip">D</div>':''}
         <div class="pk-name">${label}</div>
-        <div class="pk-stack">${p.stack} <span style="opacity:.55;">${hand.roles[id]}</span></div>
+        <div class="pk-stack">${bb(p.stack)} BB <span style="opacity:.55;">${hand.roles[id]}</span></div>
         ${isFolded?'<div class="pk-status">Couché</div>':(hand.allIn[id]?'<div class="pk-status">All-in</div>':'')}
-        ${hand.bet[id]>0?`<div class="pk-bet">${hand.bet[id]}</div>`:''}
+        ${hand.bet[id]>0?`<div class="pk-bet">${bb(hand.bet[id])} BB</div>`:''}
+        ${id!=='hero' && showShowdown?`<div class="pk-cardsmini" id="pk-seatcards-${id}"></div>`:''}
+        ${showdownName?`<div class="pk-showdown-name">${showdownName}</div>`:''}
       </div>`;
   }
-  function feedHtml(){
-    return hand.feed.slice(-16).map(f=>{
-      const icon = f.kind==='good'?'✅':f.kind==='bad'?'⚠️':f.kind==='neutral'?'🤔':'';
-      return `<div class="pk-feed-item ${f.kind}"><span class="ic">${icon}</span><span>${f.title?`<b>${f.title}</b>`:''}${f.text}</span></div>`;
-    }).join('');
+  function renderCoachFeed(v){
+    const el=document.getElementById('pk-feed-fixed');
+    if(!el) return;
+    if(!v){ el.innerHTML='<div class="pk-feed-empty">🧑‍🏫 Le coach commentera ta prochaine décision…</div>'; return; }
+    const icon = v.ok===true?'✅':(v.ok===false?'⚠️':'🤔');
+    const kind = v.ok===true?'good':(v.ok===false?'bad':'neutral');
+    el.innerHTML = `<div class="pk-feed-item ${kind}"><span class="ic">${icon}</span><span><b>${v.title}</b>${v.msg}</span></div>`;
   }
   function render(){
     const c=document.getElementById('practice-content');
+    const staleBar=document.getElementById('pk-actionbar-el');
+    if(staleBar) staleBar.remove();
     if(!session){
       const st=Save.data.spinStats;
       const cs=Save.data.coachStats;
@@ -2298,6 +2404,7 @@ const Practice=(function(){
         </div>
         <button class="btn btn-green btn-block" onclick="Practice.startSpin()">Lancer une session</button>
       `;
+      renderCoachFeed(null);
       return;
     }
     if(session.finished){
@@ -2305,8 +2412,7 @@ const Practice=(function(){
       const icon = r.placement===1?'🏆':(r.placement===2?'🥈':'🥉');
       const title = r.placement===1?'Victoire !':(r.placement===2?'2e place':'3e place');
       c.innerHTML=`
-        <div class="pk-feed">${feedHtml()}</div>
-        <div style="padding:24px 4px 4px;text-align:center;">
+        <div style="padding:16px 4px 4px;text-align:center;">
           <div style="font-size:48px;">${icon}</div>
           <div style="font-size:22px;font-weight:900;margin:6px 0;">${title}</div>
           <div style="color:var(--ink-light);font-weight:700;">+${session.xpAwarded||0} XP</div>
@@ -2321,62 +2427,52 @@ const Practice=(function(){
     const heroToCall=maxBet-(hand.bet['hero']||0);
     const pot=Object.values(hand.totalContrib).reduce((a,b)=>a+b,0);
     const isHeroTurn=!hand.done && hand.actOrder[hand.actPos]==='hero';
+    const isPreflop=hand.board.length===0;
     const justLeveledUp = session.handsAtLevel===1 && session.handsPlayed>1;
     const others=hand.ids.filter(id=>id!=='hero');
     const seatSlots = others.length===2
       ? [[others[0],'pos-top-left'],[others[1],'pos-top-right']]
       : [[others[0],'pos-top-center']];
-    let revealHtml='';
-    if(hand.done && hand.stage==='showdown'){
-      revealHtml = hand.ids.filter(id=>!hand.folded[id]).map(id=>{
-        const nm = id==='hero'?'Vous':nameOf(id);
-        return `<div class="pk-hand-name">${nm} : ${evaluateBest([...hand.holes[id],...hand.board]).name}</div>${id!=='hero'?`<div class="cards-row" id="practice-reveal-${id}" style="margin-bottom:6px;"></div>`:''}`;
-      }).join('');
-    }
     c.innerHTML=`
-      <div class="pk-feed">${feedHtml()}</div>
       <div class="pk-levelbadge">Palier ${blinds.sb}/${blinds.bb}${justLeveledUp?' 📈':''}</div>
       <div class="pk-tablewrap">
         <div class="pk-table">
           ${seatSlots.map(([id,pos])=>seatHtml(id,pos)).join('')}
           ${seatHtml('hero','pos-bottom')}
           <div class="pk-center">
-            <div class="pk-pot">POT ${pot}${heroToCall>0 && isHeroTurn?' · à suivre '+heroToCall:''}</div>
+            <div class="pk-pot">POT ${bb(pot)} BB${hand.done?' · main suivante dans un instant…':(heroToCall>0 && isHeroTurn?' · à suivre '+bb(heroToCall)+' BB':'')}</div>
             <div class="pk-boardcards" id="pk-board"></div>
           </div>
         </div>
         <div class="pk-herocards" id="pk-herocards"></div>
-        ${revealHtml}
       </div>
-      ${hand.done?'<div class="pk-nexthand"><button class="btn btn-green btn-block" onclick="Practice.nextHand()">Main suivante</button></div>':''}
     `;
     document.getElementById('pk-board').appendChild(cardsRow(hand.board,{small:true}));
     document.getElementById('pk-herocards').appendChild(cardsRow(hand.holes['hero'],{small:true}));
     if(hand.done && hand.stage==='showdown'){
       hand.ids.filter(id=>id!=='hero' && !hand.folded[id]).forEach(id=>{
-        const el=document.getElementById('practice-reveal-'+id);
-        if(el) el.appendChild(cardsRow(hand.holes[id],{small:true}));
+        const el=document.getElementById('pk-seatcards-'+id);
+        if(el) el.appendChild(cardsRow(hand.holes[id],{tiny:true}));
       });
     }
-    let bar=document.getElementById('pk-actionbar-el');
-    if(bar) bar.remove();
+    let bar;
     if(isHeroTurn){
       bar=document.createElement('div');
       bar.className='pk-actionbar';
       bar.id='pk-actionbar-el';
       document.body.appendChild(bar);
       const mk=(label,cls,fn)=>{ const b=document.createElement('button'); b.className='btn btn-sm '+cls; b.textContent=label; b.onclick=fn; return b; };
-      if(heroToCall<=0){
-        bar.appendChild(mk('Checker','btn-outline',()=>heroAction('check')));
-        bar.appendChild(mk('Miser 1/2 pot','btn-blue',()=>heroAction('betHalf')));
-        bar.appendChild(mk('Miser pot','btn-purple',()=>heroAction('betPot')));
-        bar.appendChild(mk('All-in','btn-red',()=>heroAction('allin')));
+      if(heroToCall>0) bar.appendChild(mk('Fold','btn-outline',()=>heroAction('fold')));
+      bar.appendChild(mk(heroToCall>0?('Call '+bb(heroToCall)+'bb'):'Check','btn-blue',()=>heroAction('checkcall')));
+      if(isPreflop){
+        bar.appendChild(mk('2 BB','btn-purple',()=>heroAction('raise2bb')));
+        bar.appendChild(mk('3 BB','btn-purple',()=>heroAction('raise3bb')));
       } else {
-        bar.appendChild(mk('Se coucher','btn-outline',()=>heroAction('fold')));
-        bar.appendChild(mk('Suivre ('+heroToCall+')','btn-blue',()=>heroAction('call')));
-        bar.appendChild(mk('Relancer pot','btn-purple',()=>heroAction('betPot')));
-        bar.appendChild(mk('All-in','btn-red',()=>heroAction('allin')));
+        bar.appendChild(mk('35%','btn-purple',()=>heroAction('bet35')));
+        bar.appendChild(mk('65%','btn-purple',()=>heroAction('bet65')));
+        bar.appendChild(mk('100%','btn-purple',()=>heroAction('bet100')));
       }
+      bar.appendChild(mk('All-in','btn-red',()=>heroAction('allin')));
     }
   }
 
@@ -2428,6 +2524,7 @@ const Settings=(function(){
     const s=Save.data;
     const c=document.getElementById('settings-content');
     c.innerHTML=`
+      <button class="btn btn-outline btn-block" style="margin-bottom:14px;" onclick="App.go('path')">J'ai déjà une progression</button>
       <div class="setting-row">
         <div><div class="lbl">Sons</div><div class="sub">Effets sonores pendant les leçons</div></div>
         <button class="switch ${s.settings.sound?'on':''}" id="sw-sound"><div class="knob"></div></button>
@@ -2471,7 +2568,7 @@ const Settings=(function(){
   function resetSave(){
     if(confirm('Es-tu sûr de vouloir réinitialiser toute ta progression ? Cette action est irréversible.')){
       Save.reset();
-      App.go('home');
+      App.go('path');
     }
   }
   return {render, exportSave, resetSave};
@@ -2482,7 +2579,7 @@ const Settings=(function(){
    ========================================================================= */
 window.addEventListener('load',()=>{
   Save.persist();
-  App.go('home');
+  App.go('path');
 });
 </script>
 </body>
